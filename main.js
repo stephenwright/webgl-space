@@ -186,6 +186,14 @@ var CODEWILL = (function(){
 	 * 
 	 */
 	function draw () {
+		// print some scene info
+		var info = '';
+		info += _w.strf('<p>viewport: [{0},{1}]</p>', gl.viewportWidth, gl.viewportHeight );
+		info += 'mainship <br/>'
+		info += _w.strf('<p>pos: {0}</p>', vec3.str(mainship.pos) );
+		
+		$('#info').html( info );
+		
 		//logger.debug('draw');
 		gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		mat4.identity( m4_model );
@@ -202,6 +210,63 @@ var CODEWILL = (function(){
 	
 	// =========================================================================
 	
+	var MAX_SPEED =  5;
+	var MIN_SPEED = -2;
+	var ACCELERATION_RATE = .2;
+	var DECELERATION_RATE = ACCELERATION_RATE/2;
+		
+	function move_ground (ship, a) {
+			 if ( a > 0 ) { ship.speed += ACCELERATION_RATE; }
+		else if ( a < 0 ) { ship.speed -= ACCELERATION_RATE; }
+		else { // decelerate
+			if (ship.speed > 0) ship.speed -= DECELERATION_RATE;
+			if (ship.speed < 0) ship.speed += DECELERATION_RATE;
+		}
+		// keep speed within bounds
+		if (ship.speed > MAX_SPEED) ship.speed = MAX_SPEED;
+		if (ship.speed < MIN_SPEED) ship.speed = MIN_SPEED;
+		
+		// move the ship
+		if (ship.speed != 0) {
+			var d = [0,1,0];
+			quat4.multiplyVec3( ship.rot, d );
+			vec3.normalize( d );
+			vec3.scale( d, ship.speed );
+			vec3.add( ship.pos, d );
+		}
+	}
+	var ac = 0;
+	function move_space (ship, a) {
+		var MIN_SPEED = 0;
+		if ( a > 0 ) { ac += ACCELERATION_RATE; }
+		else { // decelerate
+			if (ac > 0) ac -= DECELERATION_RATE;
+		}
+		// keep speed within bounds
+		if (ac > MAX_SPEED) ac = MAX_SPEED;
+		if (ac < MIN_SPEED) ac = MIN_SPEED;
+		
+		// current velocity
+		var v = vec3.scale( vec3.create( ship.dir ), ship.speed );
+		
+		// change in velocity
+		if (ac) {
+			// applied force, accelaration in the direction the ship is facing
+			var f = [0,1,0];
+			quat4.multiplyVec3( ship.rot, f );
+			vec3.normalize( f );
+			vec3.scale( f, ac );
+			
+			// new velocity
+			vec3.add( v, f );
+		}
+		
+		vec3.add( ship.pos, v );
+		
+		//ship.speed = vec3.length( f );
+		//ship.dir = vec3.normalize( f );
+	}
+	
 	var shipyard = {};
 	shipyard.step = function (ship) {
 		var x = API.keys[ API.K.a ] - API.keys[ API.K.d ];
@@ -216,29 +281,15 @@ var CODEWILL = (function(){
 		}
 		
 		// move
-		var MAX_SPEED =  5;
-		var MIN_SPEED = -2;
-		var ACCELERATION_RATE = .2;
-		var DECELERATION_RATE = ACCELERATION_RATE/2;
+		move_space( ship, y );
 		
-			 if ( y > 0 ) { ship.speed += ACCELERATION_RATE; }
-		else if ( y < 0 ) { ship.speed -= ACCELERATION_RATE; }
-		else { // decelerate
-			if (ship.speed > 0) ship.speed -= DECELERATION_RATE;
-			if (ship.speed < 0) ship.speed += DECELERATION_RATE;
-		}
-		// keep speed within bounds
-		if (ship.speed > MAX_SPEED) ship.speed = MAX_SPEED;
-		if (ship.speed < MIN_SPEED) ship.speed = MIN_SPEED;
-		
-		// move the ship
-		if (ship.speed != 0) {
-			var d = [0,1,0];
-			quat4.multiplyVec3( mainship.rot, d );
-			vec3.normalize( d );
-			vec3.scale( d, ship.speed );
-			vec3.add( mainship.pos, d );
-		}
+		// keep ship on the field 
+		var w = gl.viewportWidth/2;
+		var h = gl.viewportHeight/2;
+		var p = ship.pos;
+		if (p[0] > w) p[0] = -w; else if (p[0] < -w) p[0] = w;
+		if (p[1] > h) p[1] = -h; else if (p[1] < -h) p[1] = h;
+		ship.pos = p;
 	};
 	shipyard.draw = function (ship) {
 		mstack.push();
