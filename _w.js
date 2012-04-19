@@ -120,12 +120,35 @@ var _w = (function(){
 	 * @param obj - object to be converted to a string in json format
 	 * @return string representing the object
 	 */
-	API.tostr = function (obj) {
+	function obj_to_str (obj) {
 		if (typeof obj != 'object' || obj instanceof Array) return param_to_str(null,obj);
 		var params = [];
 		for (p in obj) params.push(p + ':' + param_to_str(p,obj));
 		return '{' + params.join(',') + '}';
 	}
+	API.tostr = obj_to_str;
+	
+	/**
+	 * Timer
+	 */
+	var Timer = function () {
+		this.etime;              // elapsed time since last tick
+		this.ptime = new Date().getTime();  // previous tick time
+		this.time = 0.0;
+		this.is_counting = false;
+	}
+	Timer.prototype.tick = function () {
+		var ctime = new Date().getTime();   // current time
+		this.etime = ctime - this.ptime;
+		this.ptime = ctime;
+		if ( this.is_counting ) { this.time += this.etime; }
+	}
+	Timer.prototype.stop  		= function () { this.is_counting = false; }
+	Timer.prototype.start 		= function () { this.is_counting = true; }
+	Timer.prototype.reset 		= function () { this.time = 0.0; }
+	Timer.prototype.toString 	= function () { return this.time / 1000; }
+	
+	API.Timer = Timer;
 	
 	return API;
 })();
