@@ -170,26 +170,16 @@ var CODEWILL = (function(){
 	 * 
 	 */
 	function tick () {
-		//timer.tick(); 
-		step(); 
-		draw(); 
+		timer.tick(); 
+		step();
+		draw();
 	}
 	
 	/**
 	 * 
 	 */
 	function step () {
-		var MOVE_SPEED = 2;
-		var x = API.keys[ API.K.a ] - API.keys[ API.K.d ];
-		var y = API.keys[ API.K.w ] - API.keys[ API.K.s ];
-		
-		// turn
-		//mainship.rot[3] += _w.deg2rad(x);
-		
-		// move
-		var a = y * MOVE_SPEED;
-		var d = vec3.scale( vec3.create( mainship.dir ), a );
-		vec3.add( mainship.pos, d );
+		shipyard.step( mainship );
 	}
 	
 	/**
@@ -213,11 +203,52 @@ var CODEWILL = (function(){
 	// =========================================================================
 	
 	var shipyard = {};
+	shipyard.step = function (ship) {
+		var x = API.keys[ API.K.a ] - API.keys[ API.K.d ];
+		var y = API.keys[ API.K.w ] - API.keys[ API.K.s ];
+		
+		// turn
+		var ROTATE_SPEED = 15;
+		var angle;
+		if (angle = _w.deg2rad( x * ROTATE_SPEED )) {
+			var q = _w.quat.fromAxis([0,0,1], angle);
+			quat4.multiply(mainship.rot, q);
+		}
+		
+		// move
+		var MAX_SPEED =  5;
+		var MIN_SPEED = -2;
+		var ACCELERATION_RATE = .2;
+		var DECELERATION_RATE = ACCELERATION_RATE/2;
+		
+			 if ( y > 0 ) { ship.speed += ACCELERATION_RATE; }
+		else if ( y < 0 ) { ship.speed -= ACCELERATION_RATE; }
+		else { // decelerate
+			if (ship.speed > 0) ship.speed -= DECELERATION_RATE;
+			if (ship.speed < 0) ship.speed += DECELERATION_RATE;
+		}
+		// keep speed within bounds
+		if (ship.speed > MAX_SPEED) ship.speed = MAX_SPEED;
+		if (ship.speed < MIN_SPEED) ship.speed = MIN_SPEED;
+		
+		// move the ship
+		if (ship.speed != 0) {
+			var d = [0,1,0];
+			quat4.multiplyVec3( mainship.rot, d );
+			vec3.normalize( d );
+			vec3.scale( d, ship.speed );
+			vec3.add( mainship.pos, d );
+		}
+	};
 	shipyard.draw = function (ship) {
 		mstack.push();
 		//mat4.fromRotationTranslation(ship.rot, ship.pos, m4_model);
 		mat4.translate(m4_model, ship.pos);
-		mat4.rotate(m4_model, Math.PI/2, [0,0,1]);
+		
+		var m = mat4.create();
+		quat4.toMat4(ship.rot, m);
+		mat4.multiply(m4_model, m);
+		//mat4.rotate(m4_model, ship.rot[3], vec3.create(ship.rot));
 		
 		// set the model transform
 		gl.uniformMatrix4fv( shader_program.uni.m4_model, false, m4_model );
@@ -233,12 +264,13 @@ var CODEWILL = (function(){
 		var ship = {};
 		ship.pos = vec3.create([0,30,0]);
 		ship.dir = vec3.create([0,1,0]);
-		ship.rot = quat4.create([0,1,0,0]);
+		ship.rot = quat4.create([0,0,1,0]);
+		ship.speed = 0;
 		
 		var buffs = {};
-		var verts = [-5,-5, 0,
-					  5,-5, 0,
-					  0, 5, 0];
+		var verts = [-5, -5, 0,
+					  5, -5, 0,
+					  0, 10, 0];
 		buffs.v = gl.createBuffer();
 		buffs.v.size = 3;
 		buffs.v.count = 3;

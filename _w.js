@@ -6,10 +6,34 @@ var _w = (function(){
 
 	var API = {};
 	
+	
 	/**
 	 * Math
 	 */
 	API.deg2rad = function (d) { return d*(Math.PI/180); }
+	
+	// Vectors
+	var vec = {};
+	vec.right 	= [1,0,0];
+	vec.forward = [0,1,0];
+	vec.up 		= [0,0,1];
+	API.vec = vec;
+	
+	// Quaternions
+	var quat = {};
+	quat.fromAxis = function (v, angle) {
+		angle *= 0.5;
+		var x,y,z,w, sin_a = Math.sin( angle );
+	 
+		x = ( v[0] * sin_a );
+		y = ( v[1] * sin_a );
+		z = ( v[2] * sin_a );
+		
+		w = Math.cos( angle );
+		
+		return [x,y,z,w];
+	};
+	API.quat = quat;
 	
 	/**
 	 * Overrides the target with all attributes from the source object
