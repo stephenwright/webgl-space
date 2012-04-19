@@ -7,6 +7,11 @@ var _w = (function(){
 	var API = {};
 	
 	/**
+	 * Math
+	 */
+	API.deg2rad = function (d) { return d*(Math.PI/180); }
+	
+	/**
 	 * Overrides the target with all attributes from the source object
 	 *
 	 * @param trg - the target object, to be overridden
