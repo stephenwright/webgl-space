@@ -2,7 +2,8 @@
 <html>
 <head>
 	<title>SpaceWeb</title>
-	<link rel='stylesheet' type='text/css' href='main.css' />
+	<link rel='stylesheet' type='text/css' href='css/type.css' />
+	<link rel='stylesheet' type='text/css' href='css/main.css' />
 	<script type="text/javascript" src='lib/gl-matrix-1.2.4.js'></script>
 	<script type="text/javascript" src='lib/jquery-1.7.2.js'></script>
 	<script type="text/javascript" src='_w.js'></script>
@@ -10,14 +11,19 @@
 </head>
 <body>
 <section id='main'>
-	<h1>portal</h1>
-	
-	<div id='info'></div>
+	<h1>SpaceWeb(GL)</h1>
 	<canvas id='portal'width='900px' height='400px'></canvas>
 	
-	<div id='console'>
-		<h1>console</h1>
-	</div>
+	<section id='tabs'>
+		<div class='content' id='info'></div>
+		<div class='content' id='instructions'>
+			<h2>Instructions</h2>
+			<ul>
+				<li>use WASD to move around.</li>
+			</ul>
+		</div>
+		<div class='content' id='console'></div>
+	<section>
 <section>
 </body>
 </html>

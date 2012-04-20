@@ -337,7 +337,7 @@ var CODEWILL = (function(){
 
 		var colors = [];
 		for ( var i = 0; i < 3; ++i )
-			colors = colors.concat( [ 0.0, 1.0, 0.0, 1.0 ] ); // green 
+			colors = colors.concat( [ 0.0, 1.0, 0.0, 1.0 ] ); // green
 		buffs.c = gl.createBuffer();
 		buffs.c.size = 4;
 		buffs.c.count = 3;
@@ -351,6 +351,12 @@ var CODEWILL = (function(){
 		buffs.i.count = 3;
 		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffs.i );
 		gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
+		
+		verts.concat = [-2.5, -5, 0,
+						 2.5, -5, 0,
+						 0.0,-10, 0];
+		for ( var i = 0; i < 3; ++i )
+			colors = colors.concat( [ 1.0, 0.0, 0.0, 1.0 ] ); // red 
 		
 		ship.buffs = buffs;
 		return ship;
@@ -377,3 +383,9 @@ var CODEWILL = (function(){
 })();
 
 $(CODEWILL.init);
+
+
+$(function(){
+	_w.ui.tabs( 'tabs' );
+	
+});

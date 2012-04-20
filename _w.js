@@ -179,5 +179,35 @@ var _w = (function(){
 	
 	API.Timer = Timer;
 	
+	// -------------------------------------------------------------------------
+	var _ui = {};
+	_ui.tabs = function ( id ) {
+		var box = $( '#' + id ).addClass('_wtabs');
+		var content = $( '#' + id + ' .content' );
+		var ul = document.createElement("ul");
+		ul.className = 'tabs';
+		content.each(function(){ 
+			var li = document.createElement( "li" );
+			var  a = document.createElement( "a" );
+			var  c = this;
+			a.appendChild( document.createTextNode( c.id ) );
+			a.name = c.id;
+			a.href = "javascript:";
+			$(a).click(function(){
+				content.hide();
+				$(c).show();
+				var l = $(this).parent();
+				l.parent().children('li').removeClass('active');
+				l.addClass('active'); 
+			});
+			li.className = 'tab';
+			li.appendChild(  a );
+			ul.appendChild( li );
+		});
+		box.prepend( ul );
+		$(ul).find('a').first().click();
+	}
+	API.ui = _ui;
+	
 	return API;
 })();

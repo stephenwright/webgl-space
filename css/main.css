@@ -1,0 +1,22 @@
+/** @file main.css */
+
+/** main */
+body 	{ text-align: center; overflow-y: scroll; }
+#main 	{ width: 900px; text-align: left; margin: 0 auto; }
+#portal { box-shadow: 2px 2px 2px rgba(0,0,0,.5); }
+
+/** console */
+#console {}
+#logger_output {
+	background-color: #333;
+	color: #eee;
+	padding: 3px;
+	border: 1px solid #aaa;
+	font-family: consolas, monospace;
+	font-size: 9pt;
+	white-space: pre;
+	height: 300px;
+	overflow: scroll;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.5);
+	}
+#logger_output li { border-bottom: 1px solid #555; }
