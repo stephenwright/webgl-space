@@ -159,6 +159,7 @@ var CODEWILL = (function(){
 			mat4.ortho(-w2, w2, -h2, h2, -10, 100, m4_projection);
 			
 			// start the loop
+			timer.start();
 			window.setInterval(tick, 1000/30); // 30 fps
 		}
 		catch (e) { logger.fatal(e); }
@@ -178,10 +179,16 @@ var CODEWILL = (function(){
 		catch( e ){ logger.error( e ); throw e; }
 	}
 	
+	var _ms = 0;
+	var fcount = 0;
+	var fps = 0;
+	
 	/**
 	 * 
 	 */
 	function step() {
+		if ( ( _ms += timer.etime ) < 1000 ) { ++fcount; } 
+		else { fps = fcount; _ms = fcount = 0; }
 		shipyard.step( mainship );
 	}
 	
@@ -191,9 +198,14 @@ var CODEWILL = (function(){
 	function draw() {
 		// print some scene info
 		var info = '';
-		info += _w.strf('<p>viewport: [{0},{1}]</p>', gl.viewportWidth, gl.viewportHeight );
+		info += _w.strf('viewport: [ {0}, {1} ]<br/>', gl.viewportWidth, gl.viewportHeight );
+		var ms = timer.time;
+		info += _w.strf('time: {0}m{1}s<br/>', (ms/60000).toFixed(0), ((ms%60000)/1000).toFixed(2) );
+		info += _w.strf('etime: {0}<br/>', timer.etime );
+		info += _w.strf('fps: {0}<br/>', fps );
+		
 		info += '<h6>mainship</h6>'
-		info += _w.strf('ship.pos:   	{0}<br/>', vec3.str(mainship.pos) );
+		info += _w.strf('ship.pos:   	{0}<br/>', _w.vec.tostr(mainship.pos) );
 		info += _w.strf('ship.speed: 	{0}<br/>', mainship.speed );
 		info += _w.strf('ship.thrust: 	{0}<br/>', mainship.thrust );
 		info += _w.strf('ship.has_tail: {0}<br/>', mainship.has_tail );

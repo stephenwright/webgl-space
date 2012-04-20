@@ -17,6 +17,13 @@ var _w = (function(){
 	vec.right 	= [1,0,0];
 	vec.forward = [0,1,0];
 	vec.up 		= [0,0,1];
+	vec.tostr = function (v,p) {
+		p = p || 0;
+		return API.strf('[ {0}, {1}, {2} ]', 
+			v[0].toFixed(p), 
+			v[1].toFixed(p), 
+			v[2].toFixed(p)); 
+	};
 	API.vec = vec;
 	
 	// Quaternions
