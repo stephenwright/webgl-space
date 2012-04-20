@@ -424,18 +424,6 @@ var CODEWILL = (function(){
 		var x = API.keys[ API.K.d ] - API.keys[ API.K.a ];
 		var y = API.keys[ API.K.w ] - API.keys[ API.K.s ];
 		
-		if ( !ship.firing && API.keys[ API.K.shift ] ) {
-			var p = vec3.create( ship.pos );
-			var d = quat4.multiplyVec3( ship.rot, [0,1,0] )
-			var offset = vec3.scale( d, ship.radius + AMMO_RADIUS + 2 );
-			vec3.add( p, offset );
-		
-			ammoDepot.fire( p, ship.rot );
-			ship.firing = true;
-		}
-		else
-			ship.firing = API.keys[ API.K.shift ];
-		
 		// turn
 		var angle;
 		if (angle = _w.deg2rad( x * ROTATE_SPEED )) {
@@ -449,11 +437,23 @@ var CODEWILL = (function(){
 		// keep ship on the field 
 		wrap_edge( ship );
 		
-		var collidable = [].concat(astroidbelt.cache, ammoDepot.cache);
+		// handle firing
+		if ( !ship.firing && API.keys[ API.K.shift ] ) {
+			var p = vec3.create( ship.pos );
+			var d = quat4.multiplyVec3( ship.rot, [0,1,0] )
+			var offset = vec3.scale( d, ship.radius + AMMO_RADIUS + 1 );
+			vec3.add( p, offset );
+		
+			ammoDepot.fire( p, ship.rot );
+			ship.firing = true;
+		}
+		else
+			ship.firing = API.keys[ API.K.shift ];
+		
 		// check for collision
+		var collidable = [].concat(astroidbelt.cache, ammoDepot.cache);
 		for ( j=0; j<collidable.length; ++j ) {
-			if (!collidable[j].active) continue;
-			if ( collide( ship, collidable[j] ) ) {
+			if ( collidable[j].active && collide( ship, collidable[j] ) ) {
 				logger.info('ship destroyed.');
 				collidable[j].active = false;
 			}
