@@ -427,7 +427,7 @@ var CODEWILL = (function(){
 		if ( !ship.firing && API.keys[ API.K.shift ] ) {
 			var p = vec3.create( ship.pos );
 			var d = quat4.multiplyVec3( ship.rot, [0,1,0] )
-			var offset = vec3.scale( d, ship.radius + 1 );
+			var offset = vec3.scale( d, ship.radius + AMMO_RADIUS + 2 );
 			vec3.add( p, offset );
 		
 			ammoDepot.fire( p, ship.rot );
@@ -448,6 +448,16 @@ var CODEWILL = (function(){
 		
 		// keep ship on the field 
 		wrap_edge( ship );
+		
+		var collidable = [].concat(astroidbelt.cache, ammoDepot.cache);
+		// check for collision
+		for ( j=0; j<collidable.length; ++j ) {
+			if (!collidable[j].active) continue;
+			if ( collide( ship, collidable[j] ) ) {
+				logger.info('ship destroyed.');
+				collidable[j].active = false;
+			}
+		}
 	};
 	
 	shipyard.draw = function (ship) {
@@ -464,6 +474,7 @@ var CODEWILL = (function(){
 	
 	var AMMO_SPEED 		= 20;
 	var AMMO_LIFESPAN 	= 2000;
+	var AMMO_RADIUS 	= 3;
 	
 	ammoDepot.fire = function (pos, rot) {
 		logger.trace('fire!');
@@ -478,7 +489,7 @@ var CODEWILL = (function(){
 		a.dir 		= quat4.multiplyVec3( rot, [0,1,0] );
 		a.speed 	= AMMO_SPEED;
 		a.lifespan 	= AMMO_LIFESPAN;
-		a.radius 	= 3;
+		a.radius 	= AMMO_RADIUS;
 		a.active 	= true;
 	};
 	
@@ -532,14 +543,13 @@ var CODEWILL = (function(){
 			a = ammoDepot.cache[i];
 			if ( !a.active ) 
 				continue;
-			//*
+			
 			// check for collision
 			for ( j=0; j<belt.length; ++j ) {
 				if ( collide( a, belt[j] ) ) {
-					var w = Math.floor( belt[j].worth );
-					if ( w > 0 )
-						score += w;
+					var w = Math.max( Math.floor( belt[j].worth ), 1 );
 					logger.info( _w.strf( 'astroid hit for {0} points!', w ) );
+					score += w;
 						
 					if ( j != belt.length-1 )
 						belt[j--] = belt.pop();
@@ -550,7 +560,6 @@ var CODEWILL = (function(){
 					continue ammoloop;
 				}
 			}
-			/**/
 			
 			// check for end of life
 			if ( (a.lifespan -= timer.etime) <= 0 ) {
