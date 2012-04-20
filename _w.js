@@ -6,7 +6,6 @@ var _w = (function(){
 
 	var API = {};
 	
-	
 	/**
 	 * Math
 	 */
@@ -41,6 +40,43 @@ var _w = (function(){
 		return [x,y,z,w];
 	};
 	API.quat = quat;
+	
+	// Matrices
+	var mat = {};
+	/**
+	 * @param l - left
+	 * @param r - right
+	 * @param b - bottom
+	 * @param t - top
+	 * @param n - near
+	 * @param f - far
+	 * @param m - [out] matrix (optional)
+	 */
+	mat.ortho = function (l, r, b, t, n, f, m) {
+		m = m || [];
+		m[0]  = 2 / (r-l);
+		m[1]  = 0;
+		m[2]  = 0;
+		m[3]  = 0;
+
+		m[4]  = 0;
+		m[5]  = 2 / (t-b);
+		m[6]  = 0;
+		m[7]  = 0;
+
+		m[8]  = 0;
+		m[9]  = 0;
+		m[10] = -2 / (f-n);
+		m[11] = 0;
+
+		m[12] = -(r+l) / (r-l);
+		m[13] = -(t+b) / (t-b);
+		m[14] = -(f+n) / (f-n);
+		m[15] = 1;
+
+		return m;
+	}
+	API.mat = mat;
 	
 	/**
 	 * Overrides the target with all attributes from the source object

@@ -8,12 +8,12 @@ uniform mat4 m4_model;
 uniform mat4 m4_view;
 uniform mat4 m4_projection;
 
-varying lowp vec4 vColor;
-//varying vec2 vTextureCoord;
+varying lowp vec4 _v4_color;
+//varying 	 vec2 _v2_uv;
 
 void main(void) { 
 	mat4 mvp = m4_projection * m4_view * m4_model;
 	gl_Position = mvp * vec4( v3_position, 1.0 ); 
-	vColor = v4_color;
-	//vTextureCoord = aTextureCoord;
+	_v4_color 	= v4_color;
+	//_v2_uv 		= v2_uv;
 }
