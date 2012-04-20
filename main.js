@@ -245,7 +245,7 @@ var CODEWILL = (function(){
 	var MAX_SPEED = 8;
 	var MIN_SPEED = 0;
 	var ACCELERATION_RATE = .3;
-	var DECELERATION_RATE = .95;
+	var DECELERATION_RATE = .98;
 	function move_space (ship, a) {
 		// calculate thrust
 		if ( a > 0 ) ship.thrust += ACCELERATION_RATE; else ship.thrust = 0;
@@ -321,6 +321,9 @@ var CODEWILL = (function(){
 		gl.bindBuffer( gl.ARRAY_BUFFER, ship.buffs.v );
 		gl.vertexAttribPointer( shader_program.attr.v3_position, ship.buffs.v.size, gl.FLOAT, false, 0, 0 );
 		
+		gl.bindBuffer( gl.ARRAY_BUFFER, ship.buffs.c );
+		gl.vertexAttribPointer( shader_program.attr.v4_color, ship.buffs.c.size, gl.FLOAT, false, 0, 0 );
+		
 		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, ship.buffs.i );
 		gl.drawElements( gl.TRIANGLES, ship.buffs.i.count, gl.UNSIGNED_SHORT, 0 );
 		mstack.pop();
@@ -366,7 +369,6 @@ var CODEWILL = (function(){
 		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.v ); 			gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
 		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.c ); 			gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( colors ), gl.STATIC_DRAW ); 
 		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffs.i ); 	gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
-		
 		
 		ship.buffs = buffs;
 		return ship;
