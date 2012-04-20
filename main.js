@@ -193,8 +193,10 @@ var CODEWILL = (function(){
 		var info = '';
 		info += _w.strf('<p>viewport: [{0},{1}]</p>', gl.viewportWidth, gl.viewportHeight );
 		info += '<h6>mainship</h6>'
-		info += _w.strf('ship.pos:   {0}<br/>', vec3.str(mainship.pos) );
-		info += _w.strf('ship.speed: {0}<br/>', mainship.speed );
+		info += _w.strf('ship.pos:   	{0}<br/>', vec3.str(mainship.pos) );
+		info += _w.strf('ship.speed: 	{0}<br/>', mainship.speed );
+		info += _w.strf('ship.thrust: 	{0}<br/>', mainship.thrust );
+		info += _w.strf('ship.has_tail: {0}<br/>', mainship.has_tail );
 		
 		$('#info').html( info );
 		
@@ -305,8 +307,8 @@ var CODEWILL = (function(){
 		//mat4.fromRotationTranslation(ship.rot, ship.pos, m4_model);
 		mat4.translate(m4_model, ship.pos);
 		
-		ship.buffs.v.size = ship.has_tail ? 6 : 3;
-		ship.buffs.i.count = ship.has_tail ? 6 : 3;
+		ship.buffs.v.size 	= ship.thrust ? 6 : 3;
+		ship.buffs.i.count 	= ship.thrust ? 6 : 3;
 		
 		var m = mat4.create();
 		quat4.toMat4(ship.rot, m);
@@ -337,35 +339,33 @@ var CODEWILL = (function(){
 		var verts = [-5, -5, 0,
 					  5, -5, 0,
 					  0, 10, 0];
-		// tail
-		verts = verts.concat([-2.5, -5, 0,
-							   2.5, -5, 0,
-							   0.0,-10, 0]);
 		buffs.v = gl.createBuffer();
 		buffs.v.size = 3;
 		buffs.v.count = 3;
-		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.v );
-		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
 
 		var colors = [];
 		for ( var i = 0; i < 3; ++i )
 			colors = colors.concat( [ 0.0, 1.0, 0.0, 1.0 ] ); // green
-		// tail
-		for ( var i = 0; i < 3; ++i )
-			colors = colors.concat( [ 1.0, 0.0, 0.0, 1.0 ] ); // red 
 		buffs.c = gl.createBuffer();
 		buffs.c.size = 4;
 		buffs.c.count = 3;
-		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.c );
-		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( colors ), gl.STATIC_DRAW ); 
 		
 		// index buffer
 		var indices = [ 0,1,2 , 3,4,5 ];
 		buffs.i = gl.createBuffer();
 		buffs.i.size = 1;
 		buffs.i.count = 3;
-		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffs.i );
-		gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
+		
+		// tail
+		verts = verts.concat([-3, -5, 0,
+							   3, -5, 0,
+							   0,-12, 0]);
+		for ( var i = 0; i < 3; ++i )
+			colors = colors.concat( [ 1.0, 0.0, 0.0, 1.0 ] ); // red 
+		
+		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.v ); 			gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
+		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.c ); 			gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( colors ), gl.STATIC_DRAW ); 
+		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffs.i ); 	gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
 		
 		
 		ship.buffs = buffs;
