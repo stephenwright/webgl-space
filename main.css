@@ -22,7 +22,6 @@ body 	{ text-align: center; }
 
 #portal {
 	border: 1px solid blue;
-	height: 400px;
 	}
 
 /** console */
@@ -33,7 +32,7 @@ body 	{ text-align: center; }
 	background-color: #333;
 	color: #eee;
 	padding: 3px;
-	border: 1px solid red;
+	border: 1px solid #000;
 	font-family: consolas, monospace;
 	font-size: 9pt;
 	white-space: pre;

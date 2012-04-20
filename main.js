@@ -190,7 +190,8 @@ var CODEWILL = (function(){
 		var info = '';
 		info += _w.strf('<p>viewport: [{0},{1}]</p>', gl.viewportWidth, gl.viewportHeight );
 		info += 'mainship <br/>'
-		info += _w.strf('<p>pos: {0}</p>', vec3.str(mainship.pos) );
+		info += _w.strf('<p>ship.pos: {0}</p>', vec3.str(mainship.pos) );
+		info += _w.strf('<p>ship.speed: {0}</p>', mainship.speed );
 		
 		$('#info').html( info );
 		
@@ -210,21 +211,20 @@ var CODEWILL = (function(){
 	
 	// =========================================================================
 	
-	var MAX_SPEED =  5;
-	var MIN_SPEED = -2;
-	var ACCELERATION_RATE = .2;
-	var DECELERATION_RATE = ACCELERATION_RATE/2;
-		
+	var GROUND_MAX_SPEED =  8;
+	var GROUND_MIN_SPEED = -2;
+	var GROUND_ACCELERATION_RATE = .3;
+	var GROUND_DECELERATION_RATE = ACCELERATION_RATE/2;
 	function move_ground (ship, a) {
-			 if ( a > 0 ) { ship.speed += ACCELERATION_RATE; }
-		else if ( a < 0 ) { ship.speed -= ACCELERATION_RATE; }
+			 if ( a > 0 ) { ship.speed += GROUND_ACCELERATION_RATE; }
+		else if ( a < 0 ) { ship.speed -= GROUND_ACCELERATION_RATE; }
 		else { // decelerate
-			if (ship.speed > 0) ship.speed -= DECELERATION_RATE;
-			if (ship.speed < 0) ship.speed += DECELERATION_RATE;
+			if (ship.speed > 0) ship.speed -= GROUND_DECELERATION_RATE;
+			if (ship.speed < 0) ship.speed += GROUND_DECELERATION_RATE;
 		}
 		// keep speed within bounds
-		if (ship.speed > MAX_SPEED) ship.speed = MAX_SPEED;
-		if (ship.speed < MIN_SPEED) ship.speed = MIN_SPEED;
+		if (ship.speed > GROUND_MAX_SPEED) ship.speed = GROUND_MAX_SPEED;
+		if (ship.speed < GROUND_MIN_SPEED) ship.speed = GROUND_MIN_SPEED;
 		
 		// move the ship
 		if (ship.speed != 0) {
@@ -235,36 +235,41 @@ var CODEWILL = (function(){
 			vec3.add( ship.pos, d );
 		}
 	}
-	var ac = 0;
+	
+	var MAX_THRUST = 5;
+	var MAX_SPEED = 8;
+	var MIN_SPEED = 0;
+	var ACCELERATION_RATE = .3;
+	var DECELERATION_RATE = ACCELERATION_RATE/2;
 	function move_space (ship, a) {
-		var MIN_SPEED = 0;
-		if ( a > 0 ) { ac += ACCELERATION_RATE; }
-		else { // decelerate
-			if (ac > 0) ac -= DECELERATION_RATE;
-		}
-		// keep speed within bounds
-		if (ac > MAX_SPEED) ac = MAX_SPEED;
-		if (ac < MIN_SPEED) ac = MIN_SPEED;
+		// calculate thrust
+		if ( a > 0 ) ship.thrust += ACCELERATION_RATE; else ship.thrust = 0;
+		if ( ship.thrust > MAX_THRUST ) ship.thrust = MAX_THRUST;
+		
+		ship.speed += ship.thrust;
+		
+		if (ship.speed > MIN_SPEED) ship.speed -= DECELERATION_RATE;
+		if (ship.speed > MAX_SPEED) ship.speed = MAX_SPEED;
+		if (ship.speed < MIN_SPEED) ship.speed = MIN_SPEED;
 		
 		// current velocity
 		var v = vec3.scale( vec3.create( ship.dir ), ship.speed );
 		
 		// change in velocity
-		if (ac) {
+		if (a) {
 			// applied force, accelaration in the direction the ship is facing
 			var f = [0,1,0];
 			quat4.multiplyVec3( ship.rot, f );
-			vec3.normalize( f );
-			vec3.scale( f, ac );
+			vec3.normalize( f ); 	// unit vector representing ships direction
+			vec3.scale( f, ship.thrust ); 	// scalled by the current thrust/acceleration
 			
+			vec3.add( v, f ); 		// added to the current velocity
 			// new velocity
-			vec3.add( v, f );
+			var nv = vec3.create( v );
+			ship.speed = vec3.length( nv );
+			ship.dir = vec3.normalize( nv );
 		}
-		
 		vec3.add( ship.pos, v );
-		
-		//ship.speed = vec3.length( f );
-		//ship.dir = vec3.normalize( f );
 	}
 	
 	var shipyard = {};
@@ -276,7 +281,7 @@ var CODEWILL = (function(){
 		var ROTATE_SPEED = 15;
 		var angle;
 		if (angle = _w.deg2rad( x * ROTATE_SPEED )) {
-			var q = _w.quat.fromAxis([0,0,1], angle);
+			var q = _w.quat.fromAxis([0,0,1], -angle);
 			quat4.multiply(mainship.rot, q);
 		}
 		
@@ -314,9 +319,11 @@ var CODEWILL = (function(){
 	shipyard.build = function (){
 		var ship = {};
 		ship.pos = vec3.create([0,30,0]);
-		ship.dir = vec3.create([0,1,0]);
-		ship.rot = quat4.create([0,0,1,0]);
-		ship.speed = 0;
+		ship.dir = vec3.create([0,1,0]);	// movement heading
+		ship.rot = quat4.create([0,0,1,0]); // orientation
+		
+		ship.speed 	= 0; // movement velocity
+		ship.thrust = 0;
 		
 		var buffs = {};
 		var verts = [-5, -5, 0,
