@@ -50,8 +50,8 @@ h6 { font-size: 1.1em; }
 
 /* paragraphs */
 p 	{ position: relative; top: 5px; }
+/*
 p+p { text-indent: 1.5em; }
-
 p+p > img:first-child 
 	{ margin-left: -1.5em; }
 
@@ -260,7 +260,7 @@ table.data { width: 100%; }
 	border-bottom: 1px solid #aaa;
 	list-style: none;
 	height: 26px;					/* 1.5em + 2px */
-	margin: 0; padding: 0;
+	margin: 5px 0; padding: 0;
 	position: relative;
 	box-shadow: 0px -1px 1px rgba(100,100,100,.2) inset;
 	}
@@ -289,7 +289,6 @@ table.data { width: 100%; }
 	}
 ._wtabs .tab a:hover 	{ color: #000; }
 ._wtabs .tab.active a 	{ border: none; color: #333; }
-._wtabs .content 		{ background: #fff; padding: 5px; }
 
 
 /** code blocks */

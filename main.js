@@ -170,28 +170,31 @@ var CODEWILL = (function(){
 	 * 
 	 */
 	function tick () {
-		timer.tick(); 
-		step();
-		draw();
+		try {
+			timer.tick(); 
+			step();
+			draw();
+		}
+		catch( e ){ logger.error( e ); throw e; }
 	}
 	
 	/**
 	 * 
 	 */
-	function step () {
+	function step() {
 		shipyard.step( mainship );
 	}
 	
 	/**
 	 * 
 	 */
-	function draw () {
+	function draw() {
 		// print some scene info
 		var info = '';
 		info += _w.strf('<p>viewport: [{0},{1}]</p>', gl.viewportWidth, gl.viewportHeight );
-		info += 'mainship <br/>'
-		info += _w.strf('<p>ship.pos: {0}</p>', vec3.str(mainship.pos) );
-		info += _w.strf('<p>ship.speed: {0}</p>', mainship.speed );
+		info += '<h6>mainship</h6>'
+		info += _w.strf('ship.pos:   {0}<br/>', vec3.str(mainship.pos) );
+		info += _w.strf('ship.speed: {0}<br/>', mainship.speed );
 		
 		$('#info').html( info );
 		
@@ -240,15 +243,18 @@ var CODEWILL = (function(){
 	var MAX_SPEED = 8;
 	var MIN_SPEED = 0;
 	var ACCELERATION_RATE = .3;
-	var DECELERATION_RATE = ACCELERATION_RATE/2;
+	var DECELERATION_RATE = .95;
 	function move_space (ship, a) {
 		// calculate thrust
 		if ( a > 0 ) ship.thrust += ACCELERATION_RATE; else ship.thrust = 0;
 		if ( ship.thrust > MAX_THRUST ) ship.thrust = MAX_THRUST;
 		
+		// decelerate
+		if (ship.speed != 0)
+			ship.speed = Math.floor(ship.speed * DECELERATION_RATE * 10) / 10;
+		
 		ship.speed += ship.thrust;
 		
-		if (ship.speed > MIN_SPEED) ship.speed -= DECELERATION_RATE;
 		if (ship.speed > MAX_SPEED) ship.speed = MAX_SPEED;
 		if (ship.speed < MIN_SPEED) ship.speed = MIN_SPEED;
 		
@@ -260,14 +266,12 @@ var CODEWILL = (function(){
 			// applied force, accelaration in the direction the ship is facing
 			var f = [0,1,0];
 			quat4.multiplyVec3( ship.rot, f );
-			vec3.normalize( f ); 	// unit vector representing ships direction
-			vec3.scale( f, ship.thrust ); 	// scalled by the current thrust/acceleration
-			
-			vec3.add( v, f ); 		// added to the current velocity
+			vec3.normalize( f ); 			// unit vector representing ships direction
+			vec3.scale( f, ship.thrust ); 	// scalled by the current thrust
+			vec3.add( v, f ); 				// added to the current velocity
 			// new velocity
-			var nv = vec3.create( v );
-			ship.speed = vec3.length( nv );
-			ship.dir = vec3.normalize( nv );
+			ship.speed = vec3.length( v );
+			ship.dir = vec3.normalize( v, [] );
 		}
 		vec3.add( ship.pos, v );
 	}
@@ -301,6 +305,9 @@ var CODEWILL = (function(){
 		//mat4.fromRotationTranslation(ship.rot, ship.pos, m4_model);
 		mat4.translate(m4_model, ship.pos);
 		
+		ship.buffs.v.size = ship.has_tail ? 6 : 3;
+		ship.buffs.i.count = ship.has_tail ? 6 : 3;
+		
 		var m = mat4.create();
 		quat4.toMat4(ship.rot, m);
 		mat4.multiply(m4_model, m);
@@ -321,6 +328,7 @@ var CODEWILL = (function(){
 		ship.pos = vec3.create([0,30,0]);
 		ship.dir = vec3.create([0,1,0]);	// movement heading
 		ship.rot = quat4.create([0,0,1,0]); // orientation
+		ship.has_tail = false;
 		
 		ship.speed 	= 0; // movement velocity
 		ship.thrust = 0;
@@ -329,6 +337,10 @@ var CODEWILL = (function(){
 		var verts = [-5, -5, 0,
 					  5, -5, 0,
 					  0, 10, 0];
+		// tail
+		verts = verts.concat([-2.5, -5, 0,
+							   2.5, -5, 0,
+							   0.0,-10, 0]);
 		buffs.v = gl.createBuffer();
 		buffs.v.size = 3;
 		buffs.v.count = 3;
@@ -338,6 +350,9 @@ var CODEWILL = (function(){
 		var colors = [];
 		for ( var i = 0; i < 3; ++i )
 			colors = colors.concat( [ 0.0, 1.0, 0.0, 1.0 ] ); // green
+		// tail
+		for ( var i = 0; i < 3; ++i )
+			colors = colors.concat( [ 1.0, 0.0, 0.0, 1.0 ] ); // red 
 		buffs.c = gl.createBuffer();
 		buffs.c.size = 4;
 		buffs.c.count = 3;
@@ -345,18 +360,13 @@ var CODEWILL = (function(){
 		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( colors ), gl.STATIC_DRAW ); 
 		
 		// index buffer
-		var indices = [ 0,1,2 ];
+		var indices = [ 0,1,2 , 3,4,5 ];
 		buffs.i = gl.createBuffer();
 		buffs.i.size = 1;
 		buffs.i.count = 3;
 		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffs.i );
 		gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
 		
-		verts.concat = [-2.5, -5, 0,
-						 2.5, -5, 0,
-						 0.0,-10, 0];
-		for ( var i = 0; i < 3; ++i )
-			colors = colors.concat( [ 1.0, 0.0, 0.0, 1.0 ] ); // red 
 		
 		ship.buffs = buffs;
 		return ship;
