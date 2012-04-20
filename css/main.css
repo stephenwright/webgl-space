@@ -18,5 +18,6 @@ body 	{ text-align: center; overflow-y: scroll; }
 	height: 300px;
 	overflow: scroll;
 	box-shadow: 2px 2px 2px rgba(0,0,0,.5);
+	margin: 0;
 	}
 #logger_output li { border-bottom: 1px solid #555; }
