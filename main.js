@@ -15,6 +15,9 @@ var CODEWILL = (function(){
 	
 	var mainship;
 	
+	var life_count 		= 3;
+	var score 			= 0;
+	
 	// =========================================================================
 	// Model Matrix Stack
 	var mstack = { a:[] };
@@ -146,6 +149,8 @@ var CODEWILL = (function(){
 			mainship = shipyard.build();
 			mainship.pos = [200,-60,0];
 			
+			astroidbelt.init();
+			
 			//charTest();
 			
 			var eye 	= vec3.create([0,0,-10]);
@@ -193,10 +198,10 @@ var CODEWILL = (function(){
 		else { fps = fcount; _ms = fcount = 0; }
 		shipyard.step( mainship );
 		ammoDepot.step();
+		astroidbelt.step();
 		
 		var e = gl.getError();
-		if ( e )
-		logger.error( e );
+		if ( e ) logger.error( e );
 	}
 	
 	/**
@@ -220,6 +225,8 @@ var CODEWILL = (function(){
 		
 		$('#info').html( info );
 		
+		$( '#scoreboard' ).html( _w.strf( 'lives: {0} :: score: {1}', life_count, score ) );
+		
 		//logger.debug('draw');
 		gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 		mat4.identity( m4_model );
@@ -233,6 +240,7 @@ var CODEWILL = (function(){
 		// draw element
 		shipyard.draw( mainship );
 		ammoDepot.draw();
+		astroidbelt.draw();
 	}
 	
 	// =========================================================================
@@ -277,12 +285,21 @@ var CODEWILL = (function(){
 		if (p[1] > h) p[1] = -h; else if (p[1] < -h) p[1] = h;
 	}
 	
+	/**
+	 * check if two entities have collided
+	 */
+	function collide ( e1, e2 ) {
+		var d = vec3.dist( e1.pos, e2.pos );
+		var r2 = e1.radius + e2.radius;
+		return d < r2;
+	}
+	
 	// -------------------------------------------------------------------------
 	
 	var shipyard = {};
 	
 	// Movement Constants
-	var ROTATE_SPEED = 15;
+	var ROTATE_SPEED = 10;
 	var MAX_THRUST = 5;
 	var MAX_SPEED = 8;
 	var MIN_SPEED = 0;
@@ -456,13 +473,13 @@ var CODEWILL = (function(){
 		if ( a == null ) 
 			return;
 		
-		a.active 	= true;
 		a.pos 		= vec3.create( pos );
 		a.rot 		= quat4.create( rot );
 		a.dir 		= quat4.multiplyVec3( rot, [0,1,0] );
 		a.speed 	= AMMO_SPEED;
 		a.lifespan 	= AMMO_LIFESPAN;
 		a.radius 	= 3;
+		a.active 	= true;
 	};
 	
 	ammoDepot.get = function () {
@@ -509,12 +526,33 @@ var CODEWILL = (function(){
 	};
 	
 	ammoDepot.step = function () {
-		var a, i;
-		for ( i = 0; i < ammoDepot.cache.length; ++i ) {
+		var a, i, j;
+		var belt = astroidbelt.cache;
+		ammoloop: for ( i = 0; i < ammoDepot.cache.length; ++i ) {
 			a = ammoDepot.cache[i];
 			if ( !a.active ) 
 				continue;
+			//*
+			// check for collision
+			for ( j=0; j<belt.length; ++j ) {
+				if ( collide( a, belt[j] ) ) {
+					var w = Math.floor( belt[j].worth );
+					if ( w > 0 )
+						score += w;
+					logger.info( _w.strf( 'astroid hit for {0} points!', w ) );
+						
+					if ( j != belt.length-1 )
+						belt[j--] = belt.pop();
+					else
+						belt.pop();
+					a.active = false;
+					score += 10;
+					continue ammoloop;
+				}
+			}
+			/**/
 			
+			// check for end of life
 			if ( (a.lifespan -= timer.etime) <= 0 ) {
 				a.active = false;
 				continue;
@@ -536,6 +574,104 @@ var CODEWILL = (function(){
 				continue;
 			
 			entity.draw( a );
+		}
+	};
+	
+	// =========================================================================
+	// Astroids
+	
+	var astroidbelt = { cache : [] };
+	
+	var ASTROID_SIZE 		= 20;
+	var ASTROID_LIMIT 		= 30;
+	var ASTROID_DRIFT_SPEED = 2;
+	var ASTROID_WORTH 		= ASTROID_SIZE;
+	
+	astroidbelt.init = function () {
+		astroidbelt.add();
+	};
+	
+	astroidbelt.add = function () {
+		
+		if ( astroidbelt.cache.length > ASTROID_LIMIT ) 
+			return;
+			
+		// get random position on the screen, not too close to the edge
+		var w = gl.viewportWidth  - 2*ASTROID_SIZE;
+		var h = gl.viewportHeight - 2*ASTROID_SIZE;
+		var x = Math.random()*w - w/2;
+		var y = Math.random()*h - h/2;
+		
+		logger.debug( _w.strf( 'new astroid @ [ {0}, {1} ]', x, y ) );
+		
+		// create the astroid
+		var a = {};
+		a.pos = vec3.create([ x, y, 0 ]);
+		a.dir = vec3.normalize([x,y,0]);
+		a.rot = quat4.create();
+		a.active = true;
+		a.speed = ASTROID_DRIFT_SPEED;
+		a.worth = ASTROID_WORTH;
+		var r = a.radius = ASTROID_SIZE/2;
+		
+		var buffs = {};
+		var verts = [   0,   r, 0,
+					    r, r/2, 0,
+					    r,-r/2, 0,
+					 -r/4,  -r, 0,
+					   -r,   0, 0];
+		buffs.v = gl.createBuffer();
+		buffs.v.size = 3;
+		buffs.v.count = 5;
+
+		var colors = [];
+		for ( var i = 0; i < buffs.v.count; ++i )
+			colors = colors.concat([ .75, .75, .75, 1.0 ]); // grey
+		buffs.c = gl.createBuffer();
+		buffs.c.size = 4;
+		buffs.c.count = buffs.v.count;
+		
+		var indices = [ 0,1,2
+					  , 0,2,3
+					  , 0,3,4 ];
+		buffs.i = gl.createBuffer();
+		buffs.i.size = 1;
+		buffs.i.count = 3*3;
+		
+		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.v ); 			gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
+		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.c ); 			gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( colors ), gl.STATIC_DRAW ); 
+		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffs.i ); 	gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
+		
+		a.buffs = buffs;
+		
+		astroidbelt.cache.push( a );
+	};
+	astroidbelt.step = function () {
+		var a, i;
+		
+		if ( timer.time % 10000 < timer.etime )
+			astroidbelt.add();
+			
+		for ( i = 0; i < astroidbelt.cache.length; ++i ) {
+			a = astroidbelt.cache[i];
+			if ( !a.active ) continue;
+			
+			a.worth -= timer.etime/1000;
+			
+			// drift...
+			var q = _w.quat.fromAxis( [0,0,1], 15 );
+			quat4.multiply( a.rot, q );
+			
+			var d = vec3.scale( vec3.create( a.dir ), a.speed );
+			vec3.add( a.pos, d );
+			wrap_edge( a );
+		}
+	};
+	astroidbelt.draw = function () {
+		var a, i;
+		for ( i = 0; i < astroidbelt.cache.length; ++i ) {
+			a = astroidbelt.cache[i];
+			if ( a.active ) entity.draw( a );
 		}
 	};
 	
