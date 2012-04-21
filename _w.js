@@ -211,12 +211,14 @@ var _w = (function(){
 	}
 	Timer.prototype.tick = function () {
 		var ctime = new Date().getTime();   // current time
-		this.etime = ctime - this.ptime;
+		if ( this.is_counting ) { 
+			this.etime = ctime - this.ptime;
+			this.time += this.etime; 
+		}
 		this.ptime = ctime;
-		if ( this.is_counting ) { this.time += this.etime; }
 	}
 	Timer.prototype.stop  		= function () { this.is_counting = false; }
-	Timer.prototype.start 		= function () { this.is_counting = true; }
+	Timer.prototype.start 		= function () { this.is_counting = true; this.ptime = new Date().getTime(); }
 	Timer.prototype.reset 		= function () { this.time = 0.0; }
 	Timer.prototype.toString 	= function () { return this.time / 1000; }
 	
