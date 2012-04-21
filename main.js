@@ -1,10 +1,13 @@
 /** @file main.js */
 var CODEWILL = (function(){
 
+	function _fn () {}
+
 	var API = {};
 	
 	var logger 			= _w.getLogger();
 	var timer 			= new _w.Timer();
+	var canvas 			= null;
 	
 	var gl;
 	var shader_program;
@@ -18,6 +21,35 @@ var CODEWILL = (function(){
 	var life_count 		= 3;
 	var score 			= 0;
 	
+	var is_running 		= false;
+	
+	function start () { 
+		if ( is_running ) return;
+		is_running = true;
+		timer.start(); 
+		canvas.parentNode.className = 'running';
+	}
+	API.start = start;
+	
+	function stop () { 
+		is_running = false; 
+		timer.stop();
+		canvas.parentNode.className = 'stopped';
+	}
+	API.stop = stop;
+	
+	function pause () {
+		if ( is_running = !is_running ) {
+			timer.start();
+			canvas.parentNode.className = 'running'; 
+		}
+		else {			
+			timer.stop();
+			canvas.parentNode.className = 'paused';
+		} 
+	}
+	API.pause = pause;
+		
 	// =========================================================================
 	// Model Matrix Stack
 	var mstack = { a:[] };
@@ -103,7 +135,7 @@ var CODEWILL = (function(){
 		logger.info( 'init' );
 		
 		try {
-			var canvas = document.getElementById('portal');
+			canvas = document.getElementById('portal');
 			
 			gl = canvas.getContext('experimental-webgl');
 			if (!gl) throw "no webgl :(";
@@ -146,9 +178,8 @@ var CODEWILL = (function(){
 			shader_program.uni.m4_projection 	= gl.getUniformLocation( shader_program, "m4_projection" );
 			
 			// init object
-			mainship = shipyard.build();
-			mainship.pos = [200,-60,0];
-			
+			shipyard.init();
+			ammodepot.init();
 			astroidbelt.init();
 			
 			//charTest();
@@ -178,11 +209,12 @@ var CODEWILL = (function(){
 	 */
 	function tick () {
 		//try 
+		if (is_running)
 		{
 			timer.tick(); 
 			step();
 			draw();
-		}
+		} 
 		//catch( e ){ logger.error( e ); throw e; }
 	}
 	
@@ -196,8 +228,8 @@ var CODEWILL = (function(){
 	function step() {
 		if ( ( _ms += timer.etime ) < 1000 ) { ++fcount; } 
 		else { fps = fcount; _ms = fcount = 0; }
-		shipyard.step( mainship );
-		ammoDepot.step();
+		shipyard.step();
+		ammodepot.step();
 		astroidbelt.step();
 		
 		var e = gl.getError();
@@ -225,7 +257,7 @@ var CODEWILL = (function(){
 		
 		$('#info').html( info );
 		
-		$( '#scoreboard' ).html( _w.strf( 'lives: {0} :: score: {1}', life_count, score ) );
+		$( '#scoreboard' ).html( _w.strf( 'sheild {0} :: score {1}', mainship.sheild, score ) );
 		
 		//logger.debug('draw');
 		gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
@@ -238,12 +270,13 @@ var CODEWILL = (function(){
 		gl.uniformMatrix4fv( shader_program.uni.m4_model, 		false, m4_model );
 		
 		// draw element
-		shipyard.draw( mainship );
-		ammoDepot.draw();
+		shipyard.draw();
+		ammodepot.draw();
 		astroidbelt.draw();
 	}
 	
 	// =========================================================================
+	// Entities
 	
 	var entity = {};
 	entity.draw = function ( ent ) {
@@ -294,9 +327,8 @@ var CODEWILL = (function(){
 		return d < r2;
 	}
 	
-	// -------------------------------------------------------------------------
-	
-	var shipyard = {};
+	// =========================================================================
+	// Ships 
 	
 	// Movement Constants
 	var ROTATE_SPEED = 10;
@@ -311,6 +343,7 @@ var CODEWILL = (function(){
 	var GROUND_ACCELERATION_RATE = .3;
 	var GROUND_DECELERATION_RATE = ACCELERATION_RATE/2;
 	
+	// ground based movement, no drifting
 	function move_ground (ship, a) {
 			 if ( a > 0 ) { ship.speed += GROUND_ACCELERATION_RATE; }
 		else if ( a < 0 ) { ship.speed -= GROUND_ACCELERATION_RATE; }
@@ -332,6 +365,7 @@ var CODEWILL = (function(){
 		}
 	}
 	
+	// space based movement, drifting
 	function move_space (ship, a) {
 		// calculate thrust
 		if ( a > 0 ) ship.thrust += ACCELERATION_RATE; else ship.thrust = 0;
@@ -372,18 +406,45 @@ var CODEWILL = (function(){
 		}
 		vec3.add( ship.pos, v );
 	}
+	// -------------------------------------------------------------------------
+	
+	function Ship () {
+		this.pos = vec3.create([0,30,0]);
+		this.dir = vec3.create([0,1,0]);	// movement heading
+		this.rot = _w.quat.fromAxis([0,0,1], 0); // orientation
+		this.firing = false;
+		this.radius = 10;
+		this.speed 	= 0;
+		this.thrust = 0;
+		this.sheild = 30;
+		
+		this.destroyed 	= _fn;
+	}
+	Ship.prototype.hit = function ( ent ) {
+		this.sheild -= ent.damage;
+	}
+	Ship.prototype.step = function () {
+		
+	}
+	
+	// -------------------------------------------------------------------------
+	var shipyard = { cache:[] };
+	
+	shipyard.init = function () {
+		shipyard.cache = [];
+		
+		mainship = shipyard.build();
+		mainship.pos = [200,-60,0];
+	};
 	
 	shipyard.build = function () {
-		var ship = {};
-		ship.pos = vec3.create([0,30,0]);
-		ship.dir = vec3.create([0,1,0]);	// movement heading
-		ship.rot = _w.quat.fromAxis([0,0,1], 0); // orientation
-		ship.firing = false;
-		ship.radius = 10;
-		
-		ship.speed 	= 0; // movement velocity
-		ship.thrust = 0;
-		
+		var ship = shipyard.get();
+		shipyard.cache.push(ship);
+		return ship;
+	};
+	
+	shipyard.get = function () {
+		var ship = new Ship();
 		var buffs = {};
 		var verts = [-5, -5, 0,
 					  5, -5, 0,
@@ -420,7 +481,7 @@ var CODEWILL = (function(){
 		return ship;
 	};
 	
-	shipyard.step = function (ship) {
+	shipyard.step = function () {
 		var x = API.keys[ API.K.d ] - API.keys[ API.K.a ];
 		var y = API.keys[ API.K.w ] - API.keys[ API.K.s ];
 		
@@ -428,58 +489,87 @@ var CODEWILL = (function(){
 		var angle;
 		if (angle = _w.deg2rad( x * ROTATE_SPEED )) {
 			var q = _w.quat.fromAxis([0,0,1], angle);
-			quat4.multiply(mainship.rot, q);
+			quat4.multiply( mainship.rot , q );
 		}
 		
-		// move
-		move_space( ship, y );
-		
-		// keep ship on the field 
-		wrap_edge( ship );
+		var i,l;
+		for ( i = 0, l = shipyard.cache.length; i < l; ++i ) {
+			var ship = shipyard.cache[i];
+			move_space( ship, y );
+			
+			// keep ship on the field 
+			wrap_edge( ship );
+			
+			// check for collision
+			var collidable = [].concat(astroidbelt.cache, ammodepot.cache);
+			for ( j=0; j<collidable.length; ++j ) {
+				var c = collidable[j];
+				if ( c.active && collide( ship, c ) ) {
+					ship.hit( c )
+					c.active = false;
+				}
+			}
+		}
 		
 		// handle firing
-		if ( !ship.firing && API.keys[ API.K.shift ] ) {
-			var p = vec3.create( ship.pos );
-			var d = quat4.multiplyVec3( ship.rot, [0,1,0] )
-			var offset = vec3.scale( d, ship.radius + AMMO_RADIUS + 1 );
+		if ( !mainship.firing && API.keys[ API.K.shift ] ) {
+			var p = vec3.create( mainship.pos );
+			var d = quat4.multiplyVec3( mainship.rot, [0,1,0] )
+			var offset = vec3.scale( d, mainship.radius + AMMO_RADIUS + 1 );
 			vec3.add( p, offset );
 		
-			ammoDepot.fire( p, ship.rot );
-			ship.firing = true;
+			ammodepot.fire( p, mainship.rot );
+			mainship.firing = true;
 		}
 		else
-			ship.firing = API.keys[ API.K.shift ];
+			mainship.firing = API.keys[ API.K.shift ];
 		
-		// check for collision
-		var collidable = [].concat(astroidbelt.cache, ammoDepot.cache);
-		for ( j=0; j<collidable.length; ++j ) {
-			if ( collidable[j].active && collide( ship, collidable[j] ) ) {
-				logger.info('ship destroyed.');
-				collidable[j].active = false;
-			}
+		// end game
+		if (mainship.sheild < 0) {
+			mainship.sheild = 0;
+			API.stop();
 		}
 	};
 	
 	shipyard.draw = function (ship) {
-		// show the tail if accelerating
-		ship.buffs.i.count = ship.thrust ? 6 : 3;
-		
-		entity.draw( ship );
+		for ( i = 0, l = shipyard.cache.length; i < l; ++i ) {
+			var ship = shipyard.cache[i];
+			
+			// show the tail if accelerating
+			ship.buffs.i.count = ship.thrust ? 6 : 3;
+			
+			entity.draw( ship );
+		}
 	};
 	
 	// =========================================================================
 	// Ammo
 	
-	var ammoDepot = { cache:[], cache_size: 100 };
+	var ammodepot = { cache:[], cache_size: 100 };
 	
 	var AMMO_SPEED 		= 20;
 	var AMMO_LIFESPAN 	= 2000;
 	var AMMO_RADIUS 	= 3;
 	
-	ammoDepot.fire = function (pos, rot) {
+	function Rocket () {
+		this.pos 		= vec3.create();
+		this.rot 		= quat4.create();
+		this.dir 		= quat4.create();
+		this.speed 		= AMMO_SPEED;
+		this.lifespan 	= AMMO_LIFESPAN;
+		this.radius 	= AMMO_RADIUS;
+		this.active 	= true;
+		this.damage 	= 10;
+	}
+	
+	ammodepot.init = function () {
+		
+	};
+	
+	ammodepot.fire = function (pos, rot) {
 		logger.trace('fire!');
 		
-		var a = ammoDepot.get();
+		var a = ammodepot.get();
 		
 		if ( a == null ) 
 			return;
@@ -487,24 +577,24 @@ var CODEWILL = (function(){
 		a.pos 		= vec3.create( pos );
 		a.rot 		= quat4.create( rot );
 		a.dir 		= quat4.multiplyVec3( rot, [0,1,0] );
-		a.speed 	= AMMO_SPEED;
-		a.lifespan 	= AMMO_LIFESPAN;
-		a.radius 	= AMMO_RADIUS;
 		a.active 	= true;
+		a.lifespan 	= AMMO_LIFESPAN;
 	};
 	
-	ammoDepot.get = function () {
+	ammodepot.get = function () {
 		var a = null, i;
-		for ( i = 0; i < ammoDepot.cache.length; ++i ) {
-			a = ammoDepot.cache[i];
+		for ( i = 0; i < ammodepot.cache.length; ++i ) {
+			a = ammodepot.cache[i];
 			if ( a != null && !a.active ) return a;
 		}
 		
-		if ( ammoDepot.cache.length == ammoDepot.cache_size ) 
+		if ( ammodepot.cache.length == ammodepot.cache_size ) {
+			logger.debug( 'max cache size reached');
 			return null;
+		}
 			
 		// got here, nothing in the cache, build a new shell
-		a = {};
+		a = new Rocket();
 		
 		var buffs = {};
 		var verts = [-2, -3, 0,
@@ -532,15 +622,20 @@ var CODEWILL = (function(){
 		
 		a.buffs = buffs;
 		
-		ammoDepot.cache.push( a );
+		ammodepot.cache.push( a );
 		return a;
 	};
 	
-	ammoDepot.step = function () {
+	ammodepot.remove = function (ent) {
+		var c = ammodepot.cache, l = c.length, i = 0;
+		for ( i=0; i<l; ++i ) if ( c[i] == ent ) { c.splice( i, 1 ); --l; }
+	};
+	
+	ammodepot.step = function () {
 		var a, i, j;
 		var belt = astroidbelt.cache;
-		ammoloop: for ( i = 0; i < ammoDepot.cache.length; ++i ) {
-			a = ammoDepot.cache[i];
+		ammoloop: for ( i = 0; i < ammodepot.cache.length; ++i ) {
+			a = ammodepot.cache[i];
 			if ( !a.active ) 
 				continue;
 			
@@ -550,11 +645,13 @@ var CODEWILL = (function(){
 					var w = Math.max( Math.floor( belt[j].worth ), 1 );
 					logger.info( _w.strf( 'astroid hit for {0} points!', w ) );
 					score += w;
-						
-					if ( j != belt.length-1 )
-						belt[j--] = belt.pop();
-					else
-						belt.pop();
+					
+					astroidbelt.remove( belt[j] );
+					j--;
+					//if ( j != belt.length-1 )
+					//	belt[j--] = belt.pop();
+					//else
+					//	belt.pop();
 					a.active = false;
 					score += 10;
 					continue ammoloop;
@@ -574,10 +671,10 @@ var CODEWILL = (function(){
 		}
 	};
 	
-	ammoDepot.draw = function () {
+	ammodepot.draw = function () {
 		var a, i;
-		for ( i = 0; i < ammoDepot.cache.length; ++i ) {
-			a = ammoDepot.cache[i];
+		for ( i = 0; i < ammodepot.cache.length; ++i ) {
+			a = ammodepot.cache[i];
 			
 			if ( !a.active ) 
 				continue;
@@ -588,6 +685,16 @@ var CODEWILL = (function(){
 	
 	// =========================================================================
 	// Astroids
+	
+	function Astroid (x,y) {
+		this.pos = vec3.create([ x, y, 0 ]);
+		this.dir = vec3.normalize([x,y,0]);
+		this.rot = quat4.create();
+		this.active = true;
+		this.speed = ASTROID_DRIFT_SPEED;
+		this.worth = ASTROID_WORTH;
+		this.damage = 5;
+	}
 	
 	var astroidbelt = { cache : [] };
 	
@@ -601,7 +708,6 @@ var CODEWILL = (function(){
 	};
 	
 	astroidbelt.add = function () {
-		
 		if ( astroidbelt.cache.length > ASTROID_LIMIT ) 
 			return;
 			
@@ -614,13 +720,7 @@ var CODEWILL = (function(){
 		logger.debug( _w.strf( 'new astroid @ [ {0}, {1} ]', x, y ) );
 		
 		// create the astroid
-		var a = {};
-		a.pos = vec3.create([ x, y, 0 ]);
-		a.dir = vec3.normalize([x,y,0]);
-		a.rot = quat4.create();
-		a.active = true;
-		a.speed = ASTROID_DRIFT_SPEED;
-		a.worth = ASTROID_WORTH;
+		var a = new Astroid( x,y );
 		var r = a.radius = ASTROID_SIZE/2;
 		
 		var buffs = {};
@@ -655,10 +755,16 @@ var CODEWILL = (function(){
 		
 		astroidbelt.cache.push( a );
 	};
+	
+	astroidbelt.remove = function (ent) {
+		var c = astroidbelt.cache, l = c.length, i = 0;
+		for ( i=0; i<l; ++i ) if ( c[i] == ent ) { c.splice( i, 1 ); --l; }
+	};
+	
 	astroidbelt.step = function () {
 		var a, i;
 		
-		if ( timer.time % 10000 < timer.etime )
+		if ( timer.time % 1000 < timer.etime )
 			astroidbelt.add();
 			
 		for ( i = 0; i < astroidbelt.cache.length; ++i ) {
@@ -676,6 +782,7 @@ var CODEWILL = (function(){
 			wrap_edge( a );
 		}
 	};
+	
 	astroidbelt.draw = function () {
 		var a, i;
 		for ( i = 0; i < astroidbelt.cache.length; ++i ) {

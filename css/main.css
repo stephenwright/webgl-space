@@ -3,13 +3,35 @@
 /** main */
 body 	{ text-align: center; overflow-y: scroll; }
 
-#main 	{ width: 900px; text-align: left; margin: 0 auto 20px; }
+#main 	{ width: 900px; text-align: left; margin: 0 auto 20px; position: relative; }
 
-#portal { box-shadow: 2px 2px 2px rgba(0,0,0,.5); margin: 16px 0; }
+#portal_box {
+	margin: 16px 0;
+	position: relative;
+	width: 900px; height: 400px;
+	}
+	
+#portal { box-shadow: 2px 2px 2px rgba(0,0,0,.5); }
 
 #scoreboard {
+	color: #eee;
+	font-family: monospace;
+	font-weight: bold;
+	position: absolute;
+	top: 10px; left: 10pt;
+	}
+
+#state { 
+	background: url('../state.png') no-repeat;
+	background-position: center top;
+	position: absolute; top: 100px; left: 300px;
+	width: 300px; height: 75px; 
+	}
+.running #state { display: none; }
+.paused  #state { display: block; background-position: center center; }
+.stopped #state { display: block; background-position: center bottom; }
 	
-}
+#options { text-align: center; }
 
 /** console */
 #console {}
