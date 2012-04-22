@@ -16,21 +16,31 @@ var CODEWILL = (function(){
 	var m4_model 		= mat4.create();
 	var m4_view 		= mat4.create();
 	
-	var mainship;
+	// =========================================================================
+	// Game State
 	
-	var life_count 		= 3;
+	var mainship;
 	var score 			= 0;
 	
 	var is_running 		= false;
+	var is_paused 		= false;
 	
+	/**
+	 * Kick things off
+	 */
 	function start () { 
 		if ( is_running ) return;
+		reset();
 		is_running = true;
+		is_paused = false;
 		timer.start(); 
 		canvas.parentNode.className = 'running';
 	}
 	API.start = start;
 	
+	/**
+	 * End It
+	 */
 	function stop () { 
 		is_running = false; 
 		timer.stop();
@@ -38,21 +48,49 @@ var CODEWILL = (function(){
 	}
 	API.stop = stop;
 	
+	/**
+	 * Put things to the startup positions
+	 */
+	function reset () {
+		shipyard.prepare();
+		ammodepot.prepare();
+		astroidbelt.prepare();
+		
+		// reset the camera
+		var eye 	= vec3.create([0,0,-10]);
+		var center 	= vec3.create([0,0,0]);
+		var up 		= vec3.create([0,1,0]);
+		mat4.lookAt(eye, center, up, m4_view);
+		
+		gl.viewport( 0, 0, gl.viewportWidth, gl.viewportHeight );
+		//mat4.perspective( 45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, m4_projection );
+		var w2 = gl.viewportWidth/2;
+		var h2 = gl.viewportHeight/2;
+		_w.mat.ortho( -w2, w2, -h2, h2, 10, -100, m4_projection );
+	}
+	API.reset = reset;
+	
+	/**
+	 * Temporarily suspend things
+	 */
 	function pause () {
-		if ( is_running = !is_running ) {
-			timer.start();
-			canvas.parentNode.className = 'running'; 
-		}
-		else {			
+		if ( !is_running ) return;
+		if ( is_paused = !is_paused ) {
 			timer.stop();
 			canvas.parentNode.className = 'paused';
+		}
+		else {
+			timer.start();
+			canvas.parentNode.className = 'running'; 
 		} 
 	}
 	API.pause = pause;
 		
 	// =========================================================================
 	// Model Matrix Stack
+	
 	var mstack = { a:[] };
+	
 	// Save the current model matrix
 	mstack.push = function ( m ) {
 		if ( m ) {
@@ -62,6 +100,7 @@ var CODEWILL = (function(){
 		else
 			mstack.a.push( mat4.create( m4_model ) );
 	}
+	
 	// Revert to previous model matrix
 	mstack.pop = function () {
 		if ( !mstack.a.length )
@@ -71,7 +110,9 @@ var CODEWILL = (function(){
 	
 	// =========================================================================
 	// Input
-	API.keys = []; for (var i=0; i<255;++i) API.keys[i] = 0;
+	API.key_cache = [];
+	API.keys = []; 
+	for ( var i = 0; i < 255; ++i ) API.keys[i] = API.key_cache[i] = 0;
 	API.K = {
 		a: 65, b: 66, c: 67, d: 68, e: 69, f: 70, g: 71, 
 		h: 72, i: 73, j: 74, k: 75, l: 76, m: 77, n: 78,
@@ -102,9 +143,23 @@ var CODEWILL = (function(){
 		delete:		46
 	};
 	
-	$(document)
-		.keydown(function(e){ var k = e.which; if (API.keys[k]!=1){API.keys[k] = 1; logger.trace('down:'+k); }})
-		.keyup(	 function(e){ var k = e.which; if (API.keys[k]==1){API.keys[k] = 0; }}); 
+	$(document).keydown( function (e) { 
+			var k = e.which; 
+			API.keys[k] = 1; 
+			logger.debug( 'key down:' + k );
+		}).keyup( function (e) { 
+			var k = e.which; 
+			API.keys[k] = 0; 
+			logger.debug( 'key up:' + k ); 
+		});
+	
+	// -------------------------------------------------------------------------
+	// Helpers
+	
+	API.keys.press  = function ( ch ) { return API.keys[ ch ] == 1 && API.key_cache[ ch ] == 0; }
+	API.keys.held   = function ( ch ) { return API.keys[ ch ] == 1 && API.key_cache[ ch ] == 1; }
+	API.keys.isdown = function ( ch ) { return API.keys[ ch ] == 1; }
+	API.keys.isup   = function ( ch ) { return API.keys[ ch ] == 0; }
 	
 	// =========================================================================
 	
@@ -182,21 +237,7 @@ var CODEWILL = (function(){
 			ammodepot.init();
 			astroidbelt.init();
 			
-			//charTest();
-			
-			var eye 	= vec3.create([0,0,-10]);
-			var center 	= vec3.create([0,0,0]);
-			var up 		= vec3.create([0,1,0]);
-			mat4.lookAt(eye, center, up, m4_view);
-			
-			gl.viewport( 0, 0, gl.viewportWidth, gl.viewportHeight );
-			//mat4.perspective( 45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, m4_projection );
-			var w2 = gl.viewportWidth/2;
-			var h2 = gl.viewportHeight/2;
-			_w.mat.ortho( -w2, w2, -h2, h2, 10, -100, m4_projection );
-			
 			// start the loop
-			timer.start();
 			window.setInterval(tick, 1000/30); // 30 fps
 		}
 		catch (e) { logger.fatal(e); }
@@ -208,32 +249,41 @@ var CODEWILL = (function(){
 	 * 
 	 */
 	function tick () {
-		//try 
-		if (is_running)
-		{
+		//try{
+		if ( API.keys.press( API.K.enter ) || API.keys.press( API.K.esc ) ) {
+			if ( is_running )
+				API.pause();
+			else
+				API.start();
+		} 
+		
+		if ( is_running && !is_paused ) {
 			timer.tick(); 
 			step();
 			draw();
 		} 
-		//catch( e ){ logger.error( e ); throw e; }
+		//}catch( e ){ logger.error( e ); throw e; }
+		var i, l = API.keys.length;
+		for (i=0; i<l;++i) API.key_cache[i] = API.keys[i];
 	}
 	
-	var _ms = 0;
-	var fcount = 0;
+	var ms_count = 0;
+	var frame_count = 0;
 	var fps = 0;
 	
 	/**
 	 * 
 	 */
 	function step() {
-		if ( ( _ms += timer.etime ) < 1000 ) { ++fcount; } 
-		else { fps = fcount; _ms = fcount = 0; }
+		if ( ( ms_count += timer.etime ) < 1000 ) { ++frame_count; } 
+		else { fps = frame_count; ms_count = frame_count = 0; }
+		
 		shipyard.step();
 		ammodepot.step();
 		astroidbelt.step();
 		
 		var e = gl.getError();
-		if ( e ) logger.error( e );
+		if ( e ) logger.error( _w.strf( "GL Error: {0}", e ) );
 	}
 	
 	/**
@@ -276,7 +326,7 @@ var CODEWILL = (function(){
 	}
 	
 	// =========================================================================
-	// Entities
+	// Entities - things in the world
 	
 	var entity = {};
 	entity.draw = function ( ent ) {
@@ -406,6 +456,7 @@ var CODEWILL = (function(){
 		}
 		vec3.add( ship.pos, v );
 	}
+	
 	// -------------------------------------------------------------------------
 	
 	function Ship () {
@@ -431,8 +482,11 @@ var CODEWILL = (function(){
 	var shipyard = { cache:[] };
 	
 	shipyard.init = function () {
+		shipyard.prepare();
+	};
+	
+	shipyard.prepare = function () {
 		shipyard.cache = [];
-		
 		mainship = shipyard.build();
 		mainship.pos = [200,-60,0];
 	};
@@ -563,7 +617,10 @@ var CODEWILL = (function(){
 	}
 	
 	ammodepot.init = function () {
-		
+		ammodepot.prepare();
+	};
+	ammodepot.prepare = function () {
+		ammodepot.cache = [];
 	};
 	
 	ammodepot.fire = function (pos, rot) {
@@ -645,13 +702,7 @@ var CODEWILL = (function(){
 					var w = Math.max( Math.floor( belt[j].worth ), 1 );
 					logger.info( _w.strf( 'astroid hit for {0} points!', w ) );
 					score += w;
-					
-					astroidbelt.remove( belt[j] );
-					j--;
-					//if ( j != belt.length-1 )
-					//	belt[j--] = belt.pop();
-					//else
-					//	belt.pop();
+					astroidbelt.remove( belt[ j-- ] );
 					a.active = false;
 					score += 10;
 					continue ammoloop;
@@ -702,9 +753,14 @@ var CODEWILL = (function(){
 	var ASTROID_LIMIT 		= 30;
 	var ASTROID_DRIFT_SPEED = 2;
 	var ASTROID_WORTH 		= ASTROID_SIZE;
+	var ASTROID_SPAWN_TIME 	= 1000;
 	
 	astroidbelt.init = function () {
-		astroidbelt.add();
+		astroidbelt.prepare();
+	};
+	
+	astroidbelt.prepare = function () {
+		astroidbelt.cache = [];
 	};
 	
 	astroidbelt.add = function () {
@@ -764,7 +820,7 @@ var CODEWILL = (function(){
 	astroidbelt.step = function () {
 		var a, i;
 		
-		if ( timer.time % 1000 < timer.etime )
+		if ( timer.time % ASTROID_SPAWN_TIME < timer.etime )
 			astroidbelt.add();
 			
 		for ( i = 0; i < astroidbelt.cache.length; ++i ) {
