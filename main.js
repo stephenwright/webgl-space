@@ -237,6 +237,7 @@ var CODEWILL = (function(){
 			shipyard.init();
 			ammodepot.init();
 			astroidbelt.init();
+			gravitywell.init();
 			
 			// start the loop
 			window.setInterval(tick, 1000/30); // 30 fps
@@ -276,12 +277,13 @@ var CODEWILL = (function(){
 	 * 
 	 */
 	function step() {
-		if ( ( ms_count += timer.etime ) < 1000 ) { ++frame_count; } 
+		if ( ( ms_count += timer.etime ) < 1 ) { ++frame_count; } 
 		else { fps = frame_count; ms_count = frame_count = 0; }
 		
+		gravitywell.step();
+		astroidbelt.step();
 		shipyard.step();
 		ammodepot.step();
-		astroidbelt.step();
 		
 		var e = gl.getError();
 		if ( e ) logger.error( _w.strf( "GL Error: {0}", e ) );
@@ -300,13 +302,13 @@ var CODEWILL = (function(){
 		info += _w.strf('fps: {0}<br/>', fps );
 		
 		info += '<h6>mainship</h6>'
-		info += _w.strf('ship.pos:   	{0}<br/>', _w.vec.tostr(mainship.pos) );
-		info += _w.strf('ship.dir:   	{0}<br/>', _w.vec.tostr(mainship.dir,1) );
-		info += _w.strf('ship.speed: 	{0}<br/>', mainship.speed );
+		info += _w.strf('ship.pos:   	{0}<br/>', _w.vec.tostr( mainship.pos ) );
+		info += _w.strf('ship.velocity: {0}<br/>', _w.vec.tostr( mainship.velocity, 2 ) );
+		info += _w.strf('ship.dir:   	{0}<br/>', _w.vec.tostr( mainship.dir, 1 ) );
+		info += _w.strf('ship.speed: 	{0}<br/>', vec3.length(  mainship.velocity ) );
 		info += _w.strf('ship.thrust: 	{0}<br/>', mainship.thrust );
-		info += _w.strf('ship.has_tail: {0}<br/>', mainship.has_tail );
 		
-		$('#info').html( info );
+		$( '#info' ).html( info );
 		
 		$( '#scoreboard' ).html( _w.strf( 'sheild {0} :: score {1}', mainship.sheild, score ) );
 		
@@ -321,9 +323,10 @@ var CODEWILL = (function(){
 		gl.uniformMatrix4fv( shader_program.uni.m4_model, 		false, m4_model );
 		
 		// draw element
+		gravitywell.draw();
+		astroidbelt.draw();
 		shipyard.draw();
 		ammodepot.draw();
-		astroidbelt.draw();
 	}
 	
 	// =========================================================================
@@ -378,91 +381,94 @@ var CODEWILL = (function(){
 		return d < r2;
 	}
 	
+	/**
+	 * @param ent - an entity (object with .dir and .speed)
+	 * @param f - forace being applied (vec3)
+	 */
+	function apply_force ( ent, f ) {
+		var v = vec3.scale( ent.dir, ent.speed, [] );
+		vec3.add( v, f );
+		ent.dir = vec3.normalize( v, [] );
+	//	vec3.add( ent.pos, v );
+	}
+	
+	/**
+	 * pull the target (trg) towards the source (src)
+	 */
+	function pull ( src, trg ) {
+		var d = vec3.subtract( src.pos, trg.pos, [] );
+		vec3.normalize( d );
+		vec3.scale( d, 2 * timer.etime );
+		
+		//vec3.add( trg.dir, d );
+		apply_force( trg, d );
+	}
+	
 	// =========================================================================
 	// Ships 
 	
 	// Movement Constants
 	var ROTATE_SPEED = 360;
-	var MAX_SPEED = 6;
+	var MAX_SPEED = 200;
 	var MIN_SPEED = 0;
-	var MAX_THRUST = 4;
-	var ACCELERATION_RATE = 3;
-	var DECELERATION_RATE = 1;
-	// groups specific contstants
-	var GROUND_MAX_SPEED =  8;
-	var GROUND_MIN_SPEED = -2;
-	var GROUND_ACCELERATION_RATE = 2;
-	var GROUND_DECELERATION_RATE = ACCELERATION_RATE/2;
-	
-	// ground based movement, no drifting
-	function move_ground (ship, a) {
-			 if ( a > 0 ) { ship.speed += GROUND_ACCELERATION_RATE; }
-		else if ( a < 0 ) { ship.speed -= GROUND_ACCELERATION_RATE; }
-		else { // decelerate
-			if (ship.speed > 0) ship.speed -= GROUND_DECELERATION_RATE;
-			if (ship.speed < 0) ship.speed += GROUND_DECELERATION_RATE;
-		}
-		// keep speed within bounds
-		if (ship.speed > GROUND_MAX_SPEED) ship.speed = GROUND_MAX_SPEED;
-		if (ship.speed < GROUND_MIN_SPEED) ship.speed = GROUND_MIN_SPEED;
-		
-		// move the ship
-		if (ship.speed != 0) {
-			var d = [0,1,0];
-			quat4.multiplyVec3( ship.rot, d );
-			vec3.normalize( d );
-			vec3.scale( d, ship.speed );
-			vec3.add( ship.pos, d );
-		}
-	}
+	var MAX_THRUST = 200;
+	var ACCELERATION_RATE = MAX_THRUST/2;
+	var DECELERATION_RATE = ACCELERATION_RATE;
 	
 	// space based movement, drifting
-	function move_space (ship, amount) {
+	function move_space ( ship, amount ) {
+	
+		var speed = vec3.length( ship.velocity );
+		var dir = vec3.normalize( ship.velocity, [] );
+		
+		// decelerate if moving
+		if ( speed > 0 ) {
+			var rd = vec3.scale( dir, -DECELERATION_RATE * timer.etime, [] );
+			vec3.add( ship.velocity, rd );
+		}
+		
 		// calculate thrust
-		if ( amount > 0 ) {
-			ship.thrust += ACCELERATION_RATE * (timer.etime/1000);
-			if ( ship.thrust > MAX_THRUST ) ship.thrust = MAX_THRUST;
-		}
-		else 
-			ship.thrust = 0;
-		
-		// decelerate
-		if ( ship.speed != 0 ) {
-			var speed = ship.speed - (DECELERATION_RATE * (timer.etime/1000))
-			ship.speed = Math.max( Math.floor(speed * 10) / 10, MIN_SPEED );
-		}
-		
-		// current velocity
-		var v = vec3.scale( ship.dir, ship.speed, [] );
+		ship.thrust = amount > 0 ? Math.max( ship.thrust + ACCELERATION_RATE, MAX_THRUST ) : 0;
 		
 		// change in velocity
 		if ( ship.thrust > 0 ) {
 			// applied force, accelaration in the direction the ship is facing
-			var f = quat4.multiplyVec3( ship.rot, [0,1,0] );
+			var f = quat4.multiplyVec3( ship.rot, [0,1,0] ); 	// unit vector representing ships direction
+			vec3.scale( f, ship.thrust * timer.etime ); 		// scalled by the current thrust
+			vec3.add( ship.velocity, f ); 						// added to the current velocity
 			
-			vec3.normalize( f ); 			// unit vector representing ships direction
-			vec3.scale( f, ship.thrust ); 	// scalled by the current thrust
-			vec3.add( v, f ); 				// added to the current velocity
-		
-			// new velocity
-			ship.speed = Math.min( vec3.length(v), MAX_SPEED );
-			ship.dir = vec3.normalize( v, [] );
+			// updated speed and direction based on new velocity
+			// and make sure speed is within acceptable range
+			speed = vec3.length( ship.velocity );
+			vec3.normalize( ship.velocity, dir );
+			
+			if ( speed > MAX_SPEED ) {
+				speed = MAX_SPEED;
+				vec3.normalize( ship.velocity );
+				vec3.scale( ship.velocity, speed );
+			}
 		}
 		
-		vec3.add( ship.pos, v );
+		vec3.scale( dir, speed * timer.etime );
+		vec3.add( ship.pos, dir );
+		
+		vec3.normalize( ship.velocity, ship.dir );
 	}
 	
 	// -------------------------------------------------------------------------
 	
 	function Ship () {
-		this.pos = vec3.create([0,30,0]);
-		this.dir = vec3.create([0,1,0]);	// movement heading
-		this.rot = _w.quat.fromAxis([0,0,1], 0); // orientation
+		this.pos = vec3.create( [0,30,0] );
+		this.rot = _w.quat.fromAxis( [0,0,1], 0 ); // orientation
+		
+		this.dir	= [0,1,0]; 
+		
+		this.velocity = vec3.create();
+		
 		this.firing = false;
 		this.radius = 10;
-		this.speed 	= 0;
 		this.thrust = 0;
-		this.sheild = 30;
+		this.sheild = 100;
 		
 		this.destroyed 	= _fn;
 	}
@@ -539,7 +545,7 @@ var CODEWILL = (function(){
 		
 		// turn
 		var angle;
-		if (angle = _w.deg2rad( x * ROTATE_SPEED * (timer.etime/1000) )) {
+		if (angle = _w.deg2rad( x * ROTATE_SPEED * timer.etime )) {
 			var q = _w.quat.fromAxis([0,0,1], angle);
 			quat4.multiply( mainship.rot , q );
 		}
@@ -594,14 +600,17 @@ var CODEWILL = (function(){
 		}
 	};
 	
+	shipyard.cleanup = _fn;
+	shipyard.destroy = _fn;
+	
 	// =========================================================================
 	// Ammo
 	
-	var ammodepot = { cache:[], cache_size: 100 };
-	
 	var AMMO_SPEED 		= 20;
-	var AMMO_LIFESPAN 	= 2000;
+	var AMMO_LIFESPAN 	= 2;
 	var AMMO_RADIUS 	= 3;
+	
+	// -------------------------------------------------------------------------
 	
 	function Rocket () {
 		this.pos 		= vec3.create();
@@ -613,6 +622,13 @@ var CODEWILL = (function(){
 		this.active 	= true;
 		this.damage 	= 10;
 	}
+	
+	Rocket.prototype.hit = function ( ent ) {
+	};
+	
+	// -------------------------------------------------------------------------
+	
+	var ammodepot = { cache:[], cache_size: 100 };
 	
 	ammodepot.init = function () {
 		ammodepot.prepare();
@@ -732,8 +748,20 @@ var CODEWILL = (function(){
 		}
 	};
 	
+	ammodepot.cleanup = _fn;
+	ammodepot.destroy = _fn;
+	
 	// =========================================================================
 	// Astroids
+	
+	var ASTROID_SIZE_MIN 	= 20;
+	var ASTROID_SIZE_MAX 	= 40;
+	var ASTROID_LIMIT 		= 30;
+	var ASTROID_DRIFT_SPEED = 2;
+	var ASTROID_WORTH 		= 20;
+	var ASTROID_SPAWN_TIME 	= 1;
+	
+	// -------------------------------------------------------------------------
 	
 	function Astroid (x,y) {
 		this.pos = vec3.create([ x, y, 0 ]);
@@ -745,14 +773,13 @@ var CODEWILL = (function(){
 		this.damage = 5;
 	}
 	
-	var astroidbelt = { cache : [] };
+	Astroid.prototype.hit = function ( ent ) {
+		astroidbelt.remove( this );
+	};
 	
-	var ASTROID_SIZE_MIN 	= 20;
-	var ASTROID_SIZE_MAX 	= 40;
-	var ASTROID_LIMIT 		= 30;
-	var ASTROID_DRIFT_SPEED = 2;
-	var ASTROID_WORTH 		= 20;
-	var ASTROID_SPAWN_TIME 	= 1000;
+	// -------------------------------------------------------------------------
+	
+	var astroidbelt = { cache : [] };
 	
 	astroidbelt.init = function () {
 		astroidbelt.prepare();
@@ -765,10 +792,9 @@ var CODEWILL = (function(){
 	astroidbelt.add = function () {
 		if ( astroidbelt.cache.length > ASTROID_LIMIT ) 
 			return;
-			
-		var a_size = Math.random();
-		a_size *= ASTROID_SIZE_MAX - ASTROID_SIZE_MIN;
-		a_size += ASTROID_SIZE_MIN;
+		
+		var a_size 	= ASTROID_SIZE_MIN 
+					+ ( Math.random() * ( ASTROID_SIZE_MAX - ASTROID_SIZE_MIN ) );
 		
 		// get random position on the screen, not too close to the edge
 		var w = gl.viewportWidth  - 2*a_size;
@@ -781,6 +807,7 @@ var CODEWILL = (function(){
 		// create the astroid
 		var a = new Astroid( x,y );
 		var r = a.radius = a_size/2;
+		a.damage = Math.floor( a_size );
 		
 		var buffs = {};
 		var verts = [   0,   r, 0,
@@ -830,10 +857,10 @@ var CODEWILL = (function(){
 			a = astroidbelt.cache[i];
 			if ( !a.active ) continue;
 			
-			a.worth -= timer.etime/1000;
+			a.worth -= timer.etime;
 			
 			// drift...
-			var angle = _w.deg2rad( 360/a.radius * timer.etime/1000 );
+			var angle = _w.deg2rad( 360/a.radius * timer.etime );
 			var q = _w.quat.fromAxis( [0,0,1], angle );
 			quat4.multiply( q, a.rot, a.rot );
 			
@@ -850,6 +877,78 @@ var CODEWILL = (function(){
 			if ( a.active ) entity.draw( a );
 		}
 	};
+	
+	astroidbelt.cleanup = _fn;
+	astroidbelt.destroy = _fn;
+	
+	// =========================================================================
+	// Gravity Well
+	
+	var gravitywell = {};
+	
+	gravitywell.init = function(){
+		var ent = {};
+		ent.pos = [-100,0,0];
+		ent.rot = _w.quat.fromAxis( [0,0,1], 0 );
+		ent.damage = 1000000;
+		
+		var r = ent.radius = 10;
+		
+		var buffs = {};
+		//var verts = [ Math.cos(  0)*r, Math.sin(  0)*r, 0,
+		//			  Math.cos( 90)*r, Math.sin( 90)*r, 0,
+		//			  Math.cos(180)*r, Math.sin(180)*r, 0,
+		//			  Math.cos(270)*r, Math.sin(270)*r, 0];
+		
+		var verts = [ r, 0, 0,
+					  0, r, 0,
+					 -r, 0, 0,
+					  0,-r, 0];
+		
+		logger.info( 'gravity well verts: ' + _w.tostr( verts ) );
+		buffs.v = gl.createBuffer();
+		buffs.v.size = 3;
+		buffs.v.count = 4;
+
+		var colors = [];
+		for ( var i = 0; i < 4; ++i )
+			colors = colors.concat( [ 1.0, 0.9, 0.2, 1.0 ] ); // yellow
+		buffs.c = gl.createBuffer();
+		buffs.c.size = 4;
+		buffs.c.count = 4;
+		
+		var indices = [ 0,1,2 , 0,2,3 ];
+		buffs.i = gl.createBuffer();
+		buffs.i.size = 1;
+		buffs.i.count = 6;
+		
+		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.v ); 			gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
+		gl.bindBuffer( gl.ARRAY_BUFFER, buffs.c ); 			gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( colors ), gl.STATIC_DRAW ); 
+		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, buffs.i ); 	gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
+		
+		ent.buffs = buffs;
+		
+		gravitywell.entity = ent;
+	};
+	
+	gravitywell.step = function () {
+		var gwell = gravitywell.entity;
+		
+		var entities = [].concat( astroidbelt.cache, shipyard.cache );
+		var i, ent, l = entities.length;
+		for ( i=0; i<l; ++i ) {
+			ent = entities[ i ];
+			pull ( gwell, ent );
+			
+			if ( collide( gwell, ent ) )
+				ent.hit( gwell );
+		}
+	};
+	gravitywell.draw 	= function () { entity.draw( gravitywell.entity ); };
+	
+	gravitywell.prepare = _fn;
+	gravitywell.cleanup = _fn;
+	gravitywell.destroy = _fn;
 	
 	// =========================================================================
 	// Tests

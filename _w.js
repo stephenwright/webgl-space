@@ -204,15 +204,15 @@ var _w = (function(){
 	 * Timer
 	 */
 	var Timer = function () {
-		this.time 	= 0.0;	// total running time
-		this.etime 	= 0.0;	// elapsed time since last tick
+		this.time 	= 0.0; 	// total running time
+		this.etime 	= 0.0; 	// elapsed time since last tick (seconds)
 		this.ptime 	= new Date().getTime();  // previous tick time
 		this.is_counting = false;
 	}
 	Timer.prototype.tick = function () {
 		var ctime = new Date().getTime();	// current time
 		if ( this.is_counting ) { 
-			this.etime = ctime - this.ptime;
+			this.etime = ( ctime - this.ptime ) / 1000;
 			this.time += this.etime; 
 		}
 		this.ptime = ctime;
