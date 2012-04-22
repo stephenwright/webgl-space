@@ -30,6 +30,7 @@ var CODEWILL = (function(){
 	 */
 	function start () { 
 		if ( is_running ) return;
+		logger.info( "game started." );
 		reset();
 		is_running = true;
 		is_paused = false;
@@ -41,7 +42,9 @@ var CODEWILL = (function(){
 	/**
 	 * End It
 	 */
-	function stop () { 
+	function stop () {
+		if ( !is_running ) return;
+		logger.info( "game stopped." );
 		is_running = false; 
 		timer.stop();
 		canvas.parentNode.className = 'stopped';
@@ -80,10 +83,12 @@ var CODEWILL = (function(){
 		if ( is_paused = !is_paused ) {
 			timer.stop();
 			canvas.parentNode.className = 'paused';
+			logger.info( "game paused." );
 		}
 		else {
 			timer.start();
-			canvas.parentNode.className = 'running'; 
+			canvas.parentNode.className = 'running';
+			logger.info( "game unpaused." ); 
 		} 
 	}
 	API.pause = pause;
@@ -377,16 +382,16 @@ var CODEWILL = (function(){
 	// Ships 
 	
 	// Movement Constants
-	var ROTATE_SPEED = 10;
-	var MAX_THRUST = 5;
-	var MAX_SPEED = 8;
+	var ROTATE_SPEED = 360;
+	var MAX_SPEED = 6;
 	var MIN_SPEED = 0;
-	var ACCELERATION_RATE = .2;
-	var DECELERATION_RATE = .98;
+	var MAX_THRUST = 4;
+	var ACCELERATION_RATE = 3;
+	var DECELERATION_RATE = 1;
 	// groups specific contstants
 	var GROUND_MAX_SPEED =  8;
 	var GROUND_MIN_SPEED = -2;
-	var GROUND_ACCELERATION_RATE = .3;
+	var GROUND_ACCELERATION_RATE = 2;
 	var GROUND_DECELERATION_RATE = ACCELERATION_RATE/2;
 	
 	// ground based movement, no drifting
@@ -412,44 +417,38 @@ var CODEWILL = (function(){
 	}
 	
 	// space based movement, drifting
-	function move_space (ship, a) {
+	function move_space (ship, amount) {
 		// calculate thrust
-		if ( a > 0 ) ship.thrust += ACCELERATION_RATE; else ship.thrust = 0;
-		if ( ship.thrust > MAX_THRUST ) ship.thrust = MAX_THRUST;
+		if ( amount > 0 ) {
+			ship.thrust += ACCELERATION_RATE * (timer.etime/1000);
+			if ( ship.thrust > MAX_THRUST ) ship.thrust = MAX_THRUST;
+		}
+		else 
+			ship.thrust = 0;
 		
 		// decelerate
-		if (ship.speed != 0)
-			ship.speed = Math.floor(ship.speed * DECELERATION_RATE * 10) / 10;
-		
-		// apply thrust
-		ship.speed += ship.thrust;
-		
-		// keep withing speed bounds
-		if (ship.speed > MAX_SPEED) ship.speed = MAX_SPEED;
-		if (ship.speed < MIN_SPEED) ship.speed = MIN_SPEED;
+		if ( ship.speed != 0 ) {
+			var speed = ship.speed - (DECELERATION_RATE * (timer.etime/1000))
+			ship.speed = Math.max( Math.floor(speed * 10) / 10, MIN_SPEED );
+		}
 		
 		// current velocity
-		var v = vec3.scale( vec3.create( ship.dir ), ship.speed );
+		var v = vec3.scale( ship.dir, ship.speed, [] );
 		
 		// change in velocity
-		if (a) {
+		if ( ship.thrust > 0 ) {
 			// applied force, accelaration in the direction the ship is facing
-			var f = [0,1,0];
-			quat4.multiplyVec3( ship.rot, f );
+			var f = quat4.multiplyVec3( ship.rot, [0,1,0] );
 			
 			vec3.normalize( f ); 			// unit vector representing ships direction
-			var dbg = _w.strf( 'dir:[{0},{1}]', f[0], f[1] );
-		
 			vec3.scale( f, ship.thrust ); 	// scalled by the current thrust
-			dbg += _w.strf( '* thrust:[{0}]=[{1},{2}]', ship.thrust, f[0], f[1] );
-			//logger.debug(dbg);
-		
 			vec3.add( v, f ); 				// added to the current velocity
 		
 			// new velocity
-			//ship.speed = vec3.length( v );
+			ship.speed = Math.min( vec3.length(v), MAX_SPEED );
 			ship.dir = vec3.normalize( v, [] );
 		}
+		
 		vec3.add( ship.pos, v );
 	}
 	
@@ -532,12 +531,15 @@ var CODEWILL = (function(){
 	};
 	
 	shipyard.step = function () {
-		var x = API.keys[ API.K.d ] - API.keys[ API.K.a ];
-		var y = API.keys[ API.K.w ] - API.keys[ API.K.s ];
+		var x = 0, y = 0;
+		if ( API.keys.isdown( API.K.d ) || API.keys.isdown( API.K.right ) ) x += 1;
+		if ( API.keys.isdown( API.K.a ) || API.keys.isdown( API.K.left  ) ) x -= 1;
+		if ( API.keys.isdown( API.K.w ) || API.keys.isdown( API.K.up    ) ) y += 1;
+		if ( API.keys.isdown( API.K.s ) || API.keys.isdown( API.K.down  ) ) y -= 1;
 		
 		// turn
 		var angle;
-		if (angle = _w.deg2rad( x * ROTATE_SPEED )) {
+		if (angle = _w.deg2rad( x * ROTATE_SPEED * (timer.etime/1000) )) {
 			var q = _w.quat.fromAxis([0,0,1], angle);
 			quat4.multiply( mainship.rot , q );
 		}
@@ -562,7 +564,7 @@ var CODEWILL = (function(){
 		}
 		
 		// handle firing
-		if ( !mainship.firing && API.keys[ API.K.shift ] ) {
+		if ( !mainship.firing && API.keys.press( API.K.shift ) ) {
 			var p = vec3.create( mainship.pos );
 			var d = quat4.multiplyVec3( mainship.rot, [0,1,0] )
 			var offset = vec3.scale( d, mainship.radius + AMMO_RADIUS + 1 );

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>SpaceWeb</title>
+	<title>Space: Astroid Field</title>
 	<link rel='stylesheet' type='text/css' href='css/type.css' />
 	<link rel='stylesheet' type='text/css' href='css/main.css' />
 	<script type="text/javascript" src='lib/glmatrix.js'></script>
@@ -12,8 +12,8 @@
 </head>
 <body>
 <section id='main'>
-	<h1>SpaceWeb(GL)</h1>
-		<section id='portal_box'>
+	<h1>Space: Astroid Field</h1>
+	<section id='portal_box'>
 		<canvas id='portal'width='900px' height='400px'></canvas>
 		<div id='scoreboard'></div>
 		<div id='state'></div>
@@ -26,14 +26,24 @@
 	</div>
 	
 	<section id='tabs'>
-		<div class='content' id='console'></div>
-		<div class='content' id='info'></div>
 		<div class='content' id='instructions'>
+			<p>
+				See how long you can last before being crushed by the stream 
+				of astroids.
+			</p>
+			<p>
+				Gain points by shooting down the astroids, but watch out for 
+				projectiles wrapping around and hitting you from behind.
+			</p>
 			<h2>Instructions</h2>
 			<ul>
-				<li>use WASD to move around.</li>
+				<li>use <strong>WASD</strong> or <strong>Arrow Keys</strong> to move around.</li>
+				<li>use <strong>Shift</strong> to fire.</li>
+				<li>use <strong>ESC</strong> or <strong>ENTER</strong> to <em>start/pause</em> the game.</li>
 			</ul>
 		</div>
+		<div class='content' id='info'>Start the game.</div>
+		<div class='content' id='console'></div>
 	<section>
 	
 <section>
