@@ -738,7 +738,7 @@ var CODEWILL = (function(){
 	function Astroid (x,y) {
 		this.pos = vec3.create([ x, y, 0 ]);
 		this.dir = vec3.normalize([x,y,0]);
-		this.rot = quat4.create();
+		this.rot = _w.quat.fromAxis([0,0,1], 0); // orientation
 		this.active = true;
 		this.speed = ASTROID_DRIFT_SPEED;
 		this.worth = ASTROID_WORTH;
@@ -747,10 +747,11 @@ var CODEWILL = (function(){
 	
 	var astroidbelt = { cache : [] };
 	
-	var ASTROID_SIZE 		= 20;
+	var ASTROID_SIZE_MIN 	= 20;
+	var ASTROID_SIZE_MAX 	= 40;
 	var ASTROID_LIMIT 		= 30;
 	var ASTROID_DRIFT_SPEED = 2;
-	var ASTROID_WORTH 		= ASTROID_SIZE;
+	var ASTROID_WORTH 		= 20;
 	var ASTROID_SPAWN_TIME 	= 1000;
 	
 	astroidbelt.init = function () {
@@ -765,17 +766,21 @@ var CODEWILL = (function(){
 		if ( astroidbelt.cache.length > ASTROID_LIMIT ) 
 			return;
 			
+		var a_size = Math.random();
+		a_size *= ASTROID_SIZE_MAX - ASTROID_SIZE_MIN;
+		a_size += ASTROID_SIZE_MIN;
+		
 		// get random position on the screen, not too close to the edge
-		var w = gl.viewportWidth  - 2*ASTROID_SIZE;
-		var h = gl.viewportHeight - 2*ASTROID_SIZE;
+		var w = gl.viewportWidth  - 2*a_size;
+		var h = gl.viewportHeight - 2*a_size;
 		var x = Math.random()*w - w/2;
 		var y = Math.random()*h - h/2;
 		
-		logger.debug( _w.strf( 'new astroid @ [ {0}, {1} ]', x, y ) );
+		logger.debug( _w.strf( 'new {2}m astroid @ [ {0}, {1} ]', x, y, a_size) );
 		
 		// create the astroid
 		var a = new Astroid( x,y );
-		var r = a.radius = ASTROID_SIZE/2;
+		var r = a.radius = a_size/2;
 		
 		var buffs = {};
 		var verts = [   0,   r, 0,
@@ -828,8 +833,9 @@ var CODEWILL = (function(){
 			a.worth -= timer.etime/1000;
 			
 			// drift...
-			var q = _w.quat.fromAxis( [0,0,1], 15 );
-			quat4.multiply( a.rot, q );
+			var angle = _w.deg2rad( 360/a.radius * timer.etime/1000 );
+			var q = _w.quat.fromAxis( [0,0,1], angle );
+			quat4.multiply( q, a.rot, a.rot );
 			
 			var d = vec3.scale( vec3.create( a.dir ), a.speed );
 			vec3.add( a.pos, d );
