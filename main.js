@@ -56,6 +56,8 @@ var CODEWILL = (function(){
 		ammodepot.prepare();
 		astroidbelt.prepare();
 		
+		score = 0;
+		
 		// reset the camera
 		var eye 	= vec3.create([0,0,-10]);
 		var center 	= vec3.create([0,0,0]);
@@ -143,15 +145,9 @@ var CODEWILL = (function(){
 		delete:		46
 	};
 	
-	$(document).keydown( function (e) { 
-			var k = e.which; 
-			API.keys[k] = 1; 
-			logger.debug( 'key down:' + k );
-		}).keyup( function (e) { 
-			var k = e.which; 
-			API.keys[k] = 0; 
-			logger.debug( 'key up:' + k ); 
-		});
+	$(document)
+		.keydown( function (e) { API.keys[ e.which ] = 1; })
+		.keyup(   function (e) { API.keys[ e.which ] = 0; });
 	
 	// -------------------------------------------------------------------------
 	// Helpers
