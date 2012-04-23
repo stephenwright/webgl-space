@@ -297,14 +297,13 @@ var CODEWILL = (function(){
 		var info = '';
 		info += _w.strf('viewport: [ {0}, {1} ]<br/>', gl.viewportWidth, gl.viewportHeight );
 		var ms = timer.time;
-		info += _w.strf('time: {0}m{1}s<br/>', (ms/60000).toFixed(0), ((ms%60000)/1000).toFixed(2) );
+		info += _w.strf('time: 	{0}m{1}s<br/>', (ms/60000).toFixed(0), ((ms%60000)/1000).toFixed(2) );
 		info += _w.strf('etime: {0}<br/>', timer.etime );
-		info += _w.strf('fps: {0}<br/>', fps );
+		info += _w.strf('fps: 	{0}<br/>', fps );
 		
 		info += '<h6>mainship</h6>'
 		info += _w.strf('ship.pos:   	{0}<br/>', _w.vec.tostr( mainship.pos ) );
 		info += _w.strf('ship.velocity: {0}<br/>', _w.vec.tostr( mainship.velocity, 2 ) );
-		info += _w.strf('ship.dir:   	{0}<br/>', _w.vec.tostr( mainship.dir, 1 ) );
 		info += _w.strf('ship.speed: 	{0}<br/>', vec3.length(  mainship.velocity ) );
 		info += _w.strf('ship.thrust: 	{0}<br/>', mainship.thrust );
 		
@@ -382,14 +381,11 @@ var CODEWILL = (function(){
 	}
 	
 	/**
-	 * @param ent - an entity (object with .dir and .speed)
+	 * @param ent - an entity
 	 * @param f - forace being applied (vec3)
 	 */
 	function apply_force ( ent, f ) {
-		var v = vec3.scale( ent.dir, ent.speed, [] );
-		vec3.add( v, f );
-		ent.dir = vec3.normalize( v, [] );
-	//	vec3.add( ent.pos, v );
+		vec3.add( ent.velocity, f );
 	}
 	
 	/**
@@ -398,9 +394,7 @@ var CODEWILL = (function(){
 	function pull ( src, trg ) {
 		var d = vec3.subtract( src.pos, trg.pos, [] );
 		vec3.normalize( d );
-		vec3.scale( d, 2 * timer.etime );
-		
-		//vec3.add( trg.dir, d );
+		vec3.scale( d, 20 * timer.etime );
 		apply_force( trg, d );
 	}
 	
@@ -422,7 +416,7 @@ var CODEWILL = (function(){
 		var dir = vec3.normalize( ship.velocity, [] );
 		
 		// decelerate if moving
-		if ( speed > 0 ) {
+		if ( speed != 0 ) {
 			var rd = vec3.scale( dir, -DECELERATION_RATE * timer.etime, [] );
 			vec3.add( ship.velocity, rd );
 		}
@@ -451,8 +445,6 @@ var CODEWILL = (function(){
 		
 		vec3.scale( dir, speed * timer.etime );
 		vec3.add( ship.pos, dir );
-		
-		vec3.normalize( ship.velocity, ship.dir );
 	}
 	
 	// -------------------------------------------------------------------------
@@ -460,8 +452,6 @@ var CODEWILL = (function(){
 	function Ship () {
 		this.pos = vec3.create( [0,30,0] );
 		this.rot = _w.quat.fromAxis( [0,0,1], 0 ); // orientation
-		
-		this.dir	= [0,1,0]; 
 		
 		this.velocity = vec3.create();
 		
@@ -606,7 +596,7 @@ var CODEWILL = (function(){
 	// =========================================================================
 	// Ammo
 	
-	var AMMO_SPEED 		= 20;
+	var AMMO_SPEED 		= 400;
 	var AMMO_LIFESPAN 	= 2;
 	var AMMO_RADIUS 	= 3;
 	
@@ -615,12 +605,11 @@ var CODEWILL = (function(){
 	function Rocket () {
 		this.pos 		= vec3.create();
 		this.rot 		= quat4.create();
-		this.dir 		= quat4.create();
-		this.speed 		= AMMO_SPEED;
 		this.lifespan 	= AMMO_LIFESPAN;
 		this.radius 	= AMMO_RADIUS;
 		this.active 	= true;
 		this.damage 	= 10;
+		this.velocity 	= vec3.create();
 	}
 	
 	Rocket.prototype.hit = function ( ent ) {
@@ -645,11 +634,12 @@ var CODEWILL = (function(){
 		if ( a == null ) 
 			return;
 		
+		var dir 	= quat4.multiplyVec3( rot, [0,1,0] );
+		a.velocity 	= vec3.scale( dir, AMMO_SPEED );
 		a.pos 		= vec3.create( pos );
 		a.rot 		= quat4.create( rot );
-		a.dir 		= quat4.multiplyVec3( rot, [0,1,0] );
-		a.active 	= true;
 		a.lifespan 	= AMMO_LIFESPAN;
+		a.active 	= true;
 	};
 	
 	ammodepot.get = function () {
@@ -730,7 +720,7 @@ var CODEWILL = (function(){
 			}
 			
 			// move
-			var d = vec3.scale( vec3.create( a.dir ), a.speed );
+			var d = vec3.scale( a.velocity , timer.etime, [] );
 			vec3.add( a.pos, d );
 			wrap_edge( a );
 		}
@@ -757,20 +747,21 @@ var CODEWILL = (function(){
 	var ASTROID_SIZE_MIN 	= 20;
 	var ASTROID_SIZE_MAX 	= 40;
 	var ASTROID_LIMIT 		= 30;
-	var ASTROID_DRIFT_SPEED = 2;
+	var ASTROID_DRIFT_SPEED = 100;
 	var ASTROID_WORTH 		= 20;
 	var ASTROID_SPAWN_TIME 	= 1;
 	
 	// -------------------------------------------------------------------------
 	
 	function Astroid (x,y) {
-		this.pos = vec3.create([ x, y, 0 ]);
-		this.dir = vec3.normalize([x,y,0]);
-		this.rot = _w.quat.fromAxis([0,0,1], 0); // orientation
-		this.active = true;
-		this.speed = ASTROID_DRIFT_SPEED;
-		this.worth = ASTROID_WORTH;
-		this.damage = 5;
+		this.pos 		= vec3.create([ x, y, 0 ]);
+		this.rot 		= _w.quat.fromAxis([0,0,1], 0); // orientation
+		this.active 	= true;
+		this.worth 		= ASTROID_WORTH;
+		this.damage 	= 5;
+		
+		var dir = vec3.normalize( [x,y,0] );
+		this.velocity 	= vec3.scale( dir, ASTROID_DRIFT_SPEED );
 	}
 	
 	Astroid.prototype.hit = function ( ent ) {
@@ -864,7 +855,7 @@ var CODEWILL = (function(){
 			var q = _w.quat.fromAxis( [0,0,1], angle );
 			quat4.multiply( q, a.rot, a.rot );
 			
-			var d = vec3.scale( vec3.create( a.dir ), a.speed );
+			var d = vec3.scale( a.velocity, timer.etime, [] );
 			vec3.add( a.pos, d );
 			wrap_edge( a );
 		}
