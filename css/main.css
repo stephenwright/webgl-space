@@ -33,7 +33,7 @@ h1 { font-size: 1em; margin: 0; line-height: 1em; }
 .paused  #state { display: block; background-position: center center; }
 .stopped #state { display: block; background-position: center bottom; }
 
-#options { text-align: center; float: right; }
+#options { text-align: center; float: right; z-index: 3; }
 
 /** console */
 #console {}

@@ -413,7 +413,7 @@ var CODEWILL = (function(){
 	var MIN_SPEED = 0;
 	var MAX_THRUST = 100;
 	var ACCELERATION_RATE = MAX_THRUST/2;
-	var DECELERATION_RATE = ACCELERATION_RATE/2;
+	var DECELERATION_RATE = ACCELERATION_RATE/4;
 	
 	// space based movement, drifting
 	function move_space ( ship, amount ) {
