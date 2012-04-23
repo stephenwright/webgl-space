@@ -391,15 +391,20 @@ var CODEWILL = (function(){
 		vec3.add( ent.velocity, f );
 	}
 	
+	var G = 6.9e-6;
+	
 	/**
 	 * pull the target (trg) towards the source (src)
 	 */
 	function pull ( src, trg ) {
 		var d = vec3.subtract( src.pos, trg.pos, [] );
 		var r = vec3.length( d );
+		var m1 = src.mass;
+		var m2 = trg.mass;
+		var F = G * ( m1*m2 / r*r )
 		
 		vec3.normalize( d );
-		vec3.scale( d, 42/r*r * timer.etime );
+		vec3.scale( d, F * timer.etime );
 		
 		apply_force( trg, d );
 	}
@@ -462,10 +467,10 @@ var CODEWILL = (function(){
 		this.velocity = vec3.create();
 		
 		this.firing = false;
-		this.radius = 10;
+		this.radius = 5;
 		this.thrust = 0;
 		this.sheild = 100;
-		this.mass 	= 2.6e1;
+		this.mass 	= 100;
 		
 		this.destroyed 	= _fn;
 	}
@@ -617,6 +622,7 @@ var CODEWILL = (function(){
 		this.active 	= true;
 		this.damage 	= 10;
 		this.velocity 	= vec3.create();
+		this.mass		= 10;
 	}
 	
 	Rocket.prototype.hit = function ( ent ) {
@@ -766,9 +772,10 @@ var CODEWILL = (function(){
 		this.active 	= true;
 		this.worth 		= ASTROID_WORTH;
 		this.damage 	= 5;
-		this.mass 		= size * Math.pow( 10, 2 );
+		this.mass 		= size * 100;
 		
 		vec3.normalize( pos );
+		vec3.cross( pos, [0,0,1]);
 		this.velocity 	= vec3.scale( pos, ASTROID_DRIFT_SPEED );
 	}
 	
@@ -805,10 +812,10 @@ var CODEWILL = (function(){
 					+ ( Math.random() * ( ASTROID_SIZE_MAX - ASTROID_SIZE_MIN ) );
 		
 		// get random position on the screen, not too close to the edge
-		var w = gl.viewportWidth  - 2*a_size;
-		var h = gl.viewportHeight - 2*a_size;
-		var x = Math.random()*w - w/2;
-		var y = Math.random()*h - h/2;
+		var w = gl.viewportWidth  - 4*a_size;
+		var h = gl.viewportHeight - 4*a_size;
+		var x = Math.random()*w/2;
+		var y = Math.random()*h/2;
 		
 		//logger.debug( _w.strf( 'new {2}m astroid @ [ {0}, {1} ]', x, y, a_size) );
 		
@@ -856,14 +863,20 @@ var CODEWILL = (function(){
 	};
 	
 	astroidbelt.step = function () {
-		var a, i;
+		var a, i, j, l;
 		
 		if ( timer.time % ASTROID_SPAWN_TIME < timer.etime )
 			astroidbelt.add();
-			
-		for ( i = 0; i < astroidbelt.cache.length; ++i ) {
+		
+		l = astroidbelt.cache.length;
+		for ( i=0; i<l; ++i ) {
 			a = astroidbelt.cache[i];
 			if ( !a.active ) continue;
+			
+			//for ( j=0; j<l; ++j  ) {
+			//	var b = astroidbelt.cache[j];
+			//	if (a != b) pull( a, b );
+			//}
 			
 			a.worth -= timer.etime;
 			
@@ -897,12 +910,12 @@ var CODEWILL = (function(){
 	gravitywell.init = function(){
 		var ent = {};
 		
-		ent.mass 	= 1.9e4;
-		ent.pos 	= [-100,0,0];
+		ent.pos 	= [0,0,0];
 		ent.rot 	= _w.quat.fromAxis( [0,0,1], 0 );
-		ent.damage 	= 1000000;
+		ent.damage 	= 1.0e4;
+		ent.mass 	= 1.0e4;
 		
-		var r = ent.radius = 5;
+		var r = ent.radius = 2;
 		
 		var buffs = {};
 		var verts = [ r, 0, 0,
