@@ -470,7 +470,7 @@ var CODEWILL = (function(){
 		this.radius = 5;
 		this.thrust = 0;
 		this.sheild = 100;
-		this.mass 	= 100;
+		this.mass 	= 1000;
 		
 		this.destroyed 	= _fn;
 	}
@@ -622,7 +622,7 @@ var CODEWILL = (function(){
 		this.active 	= true;
 		this.damage 	= 10;
 		this.velocity 	= vec3.create();
-		this.mass		= 10;
+		this.mass		= 1000;
 	}
 	
 	Rocket.prototype.hit = function ( ent ) {
