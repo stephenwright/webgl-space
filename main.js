@@ -301,11 +301,14 @@ var CODEWILL = (function(){
 		info += _w.strf('etime: {0}<br/>', timer.etime );
 		info += _w.strf('fps: 	{0}<br/>', fps );
 		
-		info += '<h6>mainship</h6>'
+		info += '<h6>mainship</h6>';
 		info += _w.strf('ship.pos:   	{0}<br/>', _w.vec.tostr( mainship.pos ) );
 		info += _w.strf('ship.velocity: {0}<br/>', _w.vec.tostr( mainship.velocity, 2 ) );
 		info += _w.strf('ship.speed: 	{0}<br/>', vec3.length(  mainship.velocity ) );
 		info += _w.strf('ship.thrust: 	{0}<br/>', mainship.thrust );
+		
+		//info += '<h6>astroids</h6>';
+		//info += astroidbelt.get_info();
 		
 		$( '#info' ).html( info );
 		
@@ -382,7 +385,7 @@ var CODEWILL = (function(){
 	
 	/**
 	 * @param ent - an entity
-	 * @param f - forace being applied (vec3)
+	 * @param f - force being applied (vec3)
 	 */
 	function apply_force ( ent, f ) {
 		vec3.add( ent.velocity, f );
@@ -393,8 +396,11 @@ var CODEWILL = (function(){
 	 */
 	function pull ( src, trg ) {
 		var d = vec3.subtract( src.pos, trg.pos, [] );
+		var r = vec3.length( d );
+		
 		vec3.normalize( d );
-		vec3.scale( d, 20 * timer.etime );
+		vec3.scale( d, 42/r*r * timer.etime );
+		
 		apply_force( trg, d );
 	}
 	
@@ -405,9 +411,9 @@ var CODEWILL = (function(){
 	var ROTATE_SPEED = 360;
 	var MAX_SPEED = 200;
 	var MIN_SPEED = 0;
-	var MAX_THRUST = 200;
-	var ACCELERATION_RATE = MAX_THRUST/2;
-	var DECELERATION_RATE = ACCELERATION_RATE;
+	var MAX_THRUST = 100;
+	var ACCELERATION_RATE = MAX_THRUST/3;
+	var DECELERATION_RATE = ACCELERATION_RATE/3;
 	
 	// space based movement, drifting
 	function move_space ( ship, amount ) {
@@ -459,6 +465,7 @@ var CODEWILL = (function(){
 		this.radius = 10;
 		this.thrust = 0;
 		this.sheild = 100;
+		this.mass 	= 2.6e1;
 		
 		this.destroyed 	= _fn;
 	}
@@ -753,15 +760,16 @@ var CODEWILL = (function(){
 	
 	// -------------------------------------------------------------------------
 	
-	function Astroid (x,y) {
-		this.pos 		= vec3.create([ x, y, 0 ]);
+	function Astroid (pos, size) {
+		this.pos 		= vec3.create( pos );
 		this.rot 		= _w.quat.fromAxis([0,0,1], 0); // orientation
 		this.active 	= true;
 		this.worth 		= ASTROID_WORTH;
 		this.damage 	= 5;
+		this.mass 		= size * Math.pow( 10, 2 );
 		
-		var dir = vec3.normalize( [x,y,0] );
-		this.velocity 	= vec3.scale( dir, ASTROID_DRIFT_SPEED );
+		vec3.normalize( pos );
+		this.velocity 	= vec3.scale( pos, ASTROID_DRIFT_SPEED );
 	}
 	
 	Astroid.prototype.hit = function ( ent ) {
@@ -771,6 +779,15 @@ var CODEWILL = (function(){
 	// -------------------------------------------------------------------------
 	
 	var astroidbelt = { cache : [] };
+	
+	astroidbelt.get_info = function () {
+		var a, i, info = '';
+		for ( i = 0; i < astroidbelt.cache.length; ++i ) {
+			a = astroidbelt.cache[i];
+			info += _w.strf( 'pos:{0}, velocity:{1}', _w.vec.tostr(a.pos), _w.vec.tostr(a.velocity) );
+		}
+		return info;
+	};
 	
 	astroidbelt.init = function () {
 		astroidbelt.prepare();
@@ -793,10 +810,10 @@ var CODEWILL = (function(){
 		var x = Math.random()*w - w/2;
 		var y = Math.random()*h - h/2;
 		
-		logger.debug( _w.strf( 'new {2}m astroid @ [ {0}, {1} ]', x, y, a_size) );
+		//logger.debug( _w.strf( 'new {2}m astroid @ [ {0}, {1} ]', x, y, a_size) );
 		
 		// create the astroid
-		var a = new Astroid( x,y );
+		var a = new Astroid( [x,y,0], a_size );
 		var r = a.radius = a_size/2;
 		a.damage = Math.floor( a_size );
 		
@@ -879,23 +896,19 @@ var CODEWILL = (function(){
 	
 	gravitywell.init = function(){
 		var ent = {};
-		ent.pos = [-100,0,0];
-		ent.rot = _w.quat.fromAxis( [0,0,1], 0 );
-		ent.damage = 1000000;
 		
-		var r = ent.radius = 10;
+		ent.mass 	= 1.9e4;
+		ent.pos 	= [-100,0,0];
+		ent.rot 	= _w.quat.fromAxis( [0,0,1], 0 );
+		ent.damage 	= 1000000;
+		
+		var r = ent.radius = 5;
 		
 		var buffs = {};
-		//var verts = [ Math.cos(  0)*r, Math.sin(  0)*r, 0,
-		//			  Math.cos( 90)*r, Math.sin( 90)*r, 0,
-		//			  Math.cos(180)*r, Math.sin(180)*r, 0,
-		//			  Math.cos(270)*r, Math.sin(270)*r, 0];
-		
 		var verts = [ r, 0, 0,
 					  0, r, 0,
 					 -r, 0, 0,
 					  0,-r, 0];
-		
 		logger.info( 'gravity well verts: ' + _w.tostr( verts ) );
 		buffs.v = gl.createBuffer();
 		buffs.v.size = 3;
@@ -925,17 +938,18 @@ var CODEWILL = (function(){
 	gravitywell.step = function () {
 		var gwell = gravitywell.entity;
 		
-		var entities = [].concat( astroidbelt.cache, shipyard.cache );
+		var entities = [].concat( astroidbelt.cache, shipyard.cache, ammodepot.cache );
 		var i, ent, l = entities.length;
 		for ( i=0; i<l; ++i ) {
 			ent = entities[ i ];
-			pull ( gwell, ent );
+			pull( gwell, ent );
 			
 			if ( collide( gwell, ent ) )
 				ent.hit( gwell );
 		}
 	};
-	gravitywell.draw 	= function () { entity.draw( gravitywell.entity ); };
+	
+	gravitywell.draw = function () { entity.draw( gravitywell.entity ); };
 	
 	gravitywell.prepare = _fn;
 	gravitywell.cleanup = _fn;
@@ -963,8 +977,6 @@ var CODEWILL = (function(){
 
 $(CODEWILL.init);
 
-
 $(function(){
 	_w.ui.tabs( 'tabs' );
-	
 });

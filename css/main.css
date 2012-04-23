@@ -3,12 +3,12 @@
 /** main */
 body 	{ text-align: center; overflow-y: scroll; }
 
-#main 	{ width: 900px; text-align: left; margin: 0 auto 20px; position: relative; }
+#main 	{ width: 960px; text-align: left; margin: 0 auto 20px; position: relative; }
 
 #portal_box {
 	margin: 16px 0;
 	position: relative;
-	width: 900px; height: 400px;
+	width: 960px; height: 480px;
 	}
 	
 #portal { box-shadow: 2px 2px 2px rgba(0,0,0,.5); }
@@ -30,7 +30,7 @@ body 	{ text-align: center; overflow-y: scroll; }
 .running #state { display: none; }
 .paused  #state { display: block; background-position: center center; }
 .stopped #state { display: block; background-position: center bottom; }
-	
+
 #options { text-align: center; }
 
 /** console */
@@ -49,3 +49,6 @@ body 	{ text-align: center; overflow-y: scroll; }
 	margin: 0;
 	}
 #logger_output li { border-bottom: 1px solid #555; }
+
+form input[type='text'] { vertical-align: top; display: inline; width: 400px; }
+form button 			{ vertical-align: top; }

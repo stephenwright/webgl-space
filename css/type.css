@@ -170,20 +170,6 @@ a:focus { position: relative; top: 1px; }
 
 /** menu */
 
-ul.menu {
-	list-style: none;
-	margin: 8px 0;
-	padding: 0;
-	text-align: center;
-	}
-ul.menu li {
-	display: inline;
-	padding: 8px;
-	border: 1px solid #aaa;
-	border-radius: 2px;
-	box-shadow: 0 2px 2px rgba(0,0,0,.1);
-	}
-
 html { background: #fcfcfc; }
 	
 /** forms */
@@ -200,11 +186,8 @@ input[type="password"],
 input[type="search"],
 input[type="text"],
 select, textarea {
-	margin-left: -5px;
-	border: 6px solid #eee;
-	box-shadow: 1px 1px 5px rgba(10,10,10,.5) inset;
 	padding: 3px;
-	width: 98%;
+	box-shadow: 1px 1px 5px rgba(10,10,10,.5) inset;
 	}
 select { height: 2.25em; padding: 2px; }
 textarea { height: 10em; }
