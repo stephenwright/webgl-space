@@ -296,8 +296,8 @@ var CODEWILL = (function(){
 		// print some scene info
 		var info = '';
 		info += _w.strf('viewport: [ {0}, {1} ]<br/>', gl.viewportWidth, gl.viewportHeight );
-		var ms = timer.time;
-		info += _w.strf('time: 	{0}m{1}s<br/>', (ms/60000).toFixed(0), ((ms%60000)/1000).toFixed(2) );
+		var s = timer.time;
+		info += _w.strf('time: 	{0}m{1}s<br/>', (s/60).toFixed(0), ((s%60)).toFixed(2) );
 		info += _w.strf('etime: {0}<br/>', timer.etime );
 		info += _w.strf('fps: 	{0}<br/>', fps );
 		
@@ -409,7 +409,7 @@ var CODEWILL = (function(){
 	
 	// Movement Constants
 	var ROTATE_SPEED = 360;
-	var MAX_SPEED = 200;
+	var MAX_SPEED = 180;
 	var MIN_SPEED = 0;
 	var MAX_THRUST = 100;
 	var ACCELERATION_RATE = MAX_THRUST/2;
