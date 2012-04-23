@@ -1,9 +1,11 @@
 /** @file main.css */
 
 /** main */
-body 	{ text-align: center; overflow-y: scroll; }
+body { text-align: center; overflow-y: scroll; }
 
-#main 	{ width: 960px; text-align: left; margin: 0 auto 20px; position: relative; }
+#main { width: 960px; text-align: left; margin: 0 auto 20px; position: relative; }
+
+h1 { font-size: 1em; margin: 0; line-height: 1em; }
 
 #portal_box {
 	margin: 16px 0;
@@ -31,7 +33,7 @@ body 	{ text-align: center; overflow-y: scroll; }
 .paused  #state { display: block; background-position: center center; }
 .stopped #state { display: block; background-position: center bottom; }
 
-#options { text-align: center; }
+#options { text-align: center; float: right; }
 
 /** console */
 #console {}
