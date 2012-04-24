@@ -1,0 +1,10 @@
+# Space: Astroid Feild
+
+A simple webGL space ship game.
+
+A star is pulling in astroids from across the universe,
+growing in mass and becoming more powerful.
+
+You must pilot your ship to destroy as many astroids as possible,
+to help delay the inevitable implosion of the universe.
+
