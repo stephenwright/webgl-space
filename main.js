@@ -414,11 +414,11 @@ var CODEWILL = (function(){
 	
 	// Movement Constants
 	var ROTATE_SPEED = 360;
-	var MAX_SPEED = 180;
+	var MAX_SPEED = 250;
 	var MIN_SPEED = 0;
 	var MAX_THRUST = 100;
 	var ACCELERATION_RATE = MAX_THRUST/2;
-	var DECELERATION_RATE = ACCELERATION_RATE/4;
+	var DECELERATION_RATE = ACCELERATION_RATE/2;
 	
 	// space based movement, drifting
 	function move_space ( ship, amount ) {
@@ -470,7 +470,7 @@ var CODEWILL = (function(){
 		this.radius = 5;
 		this.thrust = 0;
 		this.sheild = 100;
-		this.mass 	= 1000;
+		this.mass 	= 500;
 		
 		this.destroyed 	= _fn;
 	}
@@ -572,7 +572,12 @@ var CODEWILL = (function(){
 		}
 		
 		// handle firing
-		if ( !mainship.firing && API.keys.press( API.K.shift ) ) {
+		var fire_key_down 
+			 = API.keys.press( API.K.shift ) 
+			|| API.keys.press( API.K.s ) 
+			|| API.keys.press( API.K.down );
+			
+		if ( !mainship.firing && fire_key_down ) {
 			var p = vec3.create( mainship.pos );
 			var d = quat4.multiplyVec3( mainship.rot, [0,1,0] )
 			var offset = vec3.scale( d, mainship.radius + AMMO_RADIUS + 1 );
@@ -608,7 +613,7 @@ var CODEWILL = (function(){
 	// =========================================================================
 	// Ammo
 	
-	var AMMO_SPEED 		= 400;
+	var AMMO_SPEED 		= 300;
 	var AMMO_LIFESPAN 	= 2;
 	var AMMO_RADIUS 	= 3;
 	
@@ -873,10 +878,10 @@ var CODEWILL = (function(){
 			a = astroidbelt.cache[i];
 			if ( !a.active ) continue;
 			
-			//for ( j=0; j<l; ++j  ) {
-			//	var b = astroidbelt.cache[j];
-			//	if (a != b) pull( a, b );
-			//}
+			for ( j=0; j<l; ++j  ) {
+				var b = astroidbelt.cache[j];
+				if (a != b) pull( a, b );
+			}
 			
 			a.worth -= timer.etime;
 			
