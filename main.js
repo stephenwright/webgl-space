@@ -9,7 +9,11 @@
 	var root_node 	= new API.Node();
 	
 	var mainship;
-	var score 			= 0;
+	var score 		= 0;
+	
+	var map = { 
+		"width": 1200, "height": 800 
+	};
 	
 	function node_call ( node, fn ) { 
 		node[ fn ].call( node );
@@ -57,8 +61,47 @@
 		node_call( root_node, 'prepare' );
 	};
 	
+	var EDGE_TOLERANCE = 200;
+	
 	app.step = function () {
 		node_call( root_node, 'step' );
+		
+		// keep the camera on the main ship
+		var Pt = mainship.pos; // position of target being tracked
+		var Pc = vec3.create( API.camera.pos ); // position of the camera
+		
+		var d = vec3.subtract( Pt, Pc, [] );
+		var e = EDGE_TOLERANCE;
+		
+		var mw = map.width/2;
+		var mh = map.height/2;
+		
+		var vw = (gl.viewportWidth/2)  - e;
+		var vh = (gl.viewportHeight/2) - e;
+		
+		// width
+		if ( d[0] - vw > 0 ) Pc[0] += d[0] - vw;
+		if ( d[0] + vw < 0 ) Pc[0] += d[0] + vw;
+		
+		// height
+		if ( d[1] - vh > 0 ) Pc[1] += d[1] - vh;
+		if ( d[1] + vh < 0 ) Pc[1] += d[1] + vh;
+		
+		// edge tolerance no longer applies for this next section
+		vw += e;
+		vh += e;
+		
+		// keep camera on the map
+		if ( Pc[0] + vw > mw ) Pc[0] = mw - vw;
+		if ( Pc[0] - vw <-mw ) Pc[0] = -(mw - vw);
+		
+		if ( Pc[1] + vh > mh ) Pc[1] = mh - vh;
+		if ( Pc[1] - vh <-mh ) Pc[1] = -(mh - vh);
+		
+		// move the camera 
+		vec3.subtract( Pc, API.camera.pos );
+		if ( vec3.length( Pc ) > 0 )
+			API.camera.move( Pc );
 	};
 	
 	app.draw = function () {
@@ -69,6 +112,11 @@
 		info += _w.strf('etime: {0}<br/>', timer.etime );
 		info += _w.strf('fps:   {0}<br/>', API.fps );
 
+		info += '<h6>camera</h6>';
+		info += _w.strf('camera.pos:      {0}<br/>', _w.vec.tostr( API.camera.pos ) );
+		//info += _w.strf('camera.trg:      {0}<br/>', _w.vec.tostr( API.camera.trg ) );
+		//info += _w.strf('camera.up:       {0}<br/>', _w.vec.tostr( API.camera.up ) );
+		
 		info += '<h6>mainship</h6>';
 		info += _w.strf('ship.pos:      {0}<br/>', _w.vec.tostr( mainship.pos ) );
 		info += _w.strf('ship.velocity: {0}<br/>', _w.vec.tostr( mainship.velocity, 2 ) );
@@ -98,9 +146,8 @@
 	 * wrap entities around the edge of the screen
 	 */
 	function wrap_edge ( ent ) {
-		var g = 10;
-		var w = gl.viewportWidth/2  + g;
-		var h = gl.viewportHeight/2 + g;
+		var w = map.width /2;
+		var h = map.height/2;
 		var p = ent.pos;
 		if (p[0] > w) p[0] = -w; else if (p[0] < -w) p[0] = w;
 		if (p[1] > h) p[1] = -h; else if (p[1] < -h) p[1] = h;
