@@ -561,8 +561,8 @@
 					+ ( Math.random() * ( ASTROID_SIZE_MAX - ASTROID_SIZE_MIN ) );
 		
 		// get random position on the screen, not too close to the edge
-		var w = gl.viewportWidth  - 4*a_size;
-		var h = gl.viewportHeight - 4*a_size;
+		var w = map.width  - 4*a_size;
+		var h = map.height - 4*a_size;
 		var n = Math.min(h,w);
 		var x = Math.random()*n/2;
 		var y = Math.random()*n/2;
@@ -654,7 +654,7 @@
 		this.damage = 1.0e4;
 		this.mass 	= 1.0e4;
 		
-		var r = this.radius = 2;
+		var r = this.radius = 5;
 		
 		var verts = [ r, 0, 0,
 					  0, r, 0,
