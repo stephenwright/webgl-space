@@ -211,7 +211,7 @@
 		this.radius = 5;
 		this.thrust = 0;
 		this.sheild = 100;
-		this.mass 	= 300;
+		this.mass 	= 500;
 	}
 	
 	Ship.prototype = new API.Node();
@@ -564,8 +564,8 @@
 		var w = map.width  - 4*a_size;
 		var h = map.height - 4*a_size;
 		var n = Math.min(h,w);
-		var x = Math.random()*n/2;
-		var y = Math.random()*n/2;
+		var x = Math.random()*n -n;
+		var y = Math.random()*n -n;
 		
 		//logger.debug( _w.strf( 'new {2}m astroid @ [ {0}, {1} ]', x, y, a_size) );
 		
