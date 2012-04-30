@@ -569,16 +569,15 @@
 					+ ( Math.random() * ( ASTROID_SIZE_MAX - ASTROID_SIZE_MIN ) );
 		
 		// get random position on the screen, not too close to the edge
-		var w = map.width  - 4*a_size;
-		var h = map.height - 4*a_size;
-		var n = Math.min( h, w );
-		var x = Math.random()*n - n;
-		var y = Math.random(x)*n - n;
+		var n = Math.min( map.width/2, map.height/2 ) - a_size*4;
+		var d = Math.random() * n + a_size*2;
+		var q = _w.quat.fromAxis( [0,0,1], Math.random()*360 );
+		var p = quat4.multiplyVec3( q, [0,d,0] )
 		
 		//logger.debug( _w.strf( 'new {2}m astroid @ [ {0}, {1} ]', x, y, a_size) );
 		
 		// create the astroid
-		var a = new Astroid( [x,y,0], a_size );
+		var a = new Astroid( p, a_size );
 		var r = a.radius = a_size/2;
 		a.damage = Math.floor( a_size );
 		
@@ -619,7 +618,7 @@
 			if ( !a.active ) continue;
 			
 			// pull astroids towards each other
-			for ( j=0; j<l; ++j  ) { var b = this.cache[j]; if (a != b) pull( a, b ); }
+			//for ( j=0; j<l; ++j  ) { var b = this.cache[j]; if (a != b) pull( a, b ); }
 			
 			// reduce value over time
 			a.worth -= timer.etime;
@@ -635,7 +634,7 @@
 			
 			// update velocity line
 			pv = vec3.add( vec3.negate( a.velocity, [] ), a.pos );
-			API.line.update( a.vline, a.pos, pv );
+			//API.line.update( a.vline, a.pos, pv );
 		}
 	};
 	
