@@ -5,10 +5,10 @@ precision mediump float;
 //uniform sampler2D uSampler;
 uniform mat4 m4_view;
 
-const vec3 light_a = vec3( 1.0 );
+const vec3 light_a = vec3( 0.9 );
 const vec3 light_d = vec3( 0.8 );
 const vec3 light_s = vec3( 0.4 );
-const vec4 light_p = vec4( 100., 100., 10., 1. );
+const vec4 light_p = vec4( 0., 0., 3., 1. );
 
 const vec3 n = vec3( 0., 0., 1. );
 

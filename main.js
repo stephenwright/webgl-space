@@ -48,6 +48,48 @@
 		return b;
 	}
 	
+	function generate_line_buffers ( length ) {
+		var b = {};
+		var start = [ 0,0,0 ];
+		var end = vec3.scale( [0,1,0], length );
+		var indices = [ 0, 1 ];
+		var colors = [ 1,1,1,1
+					 , 1,1,1,1 ];
+		
+		b.v = gl.createBuffer();
+		b.c = gl.createBuffer();
+		b.i = gl.createBuffer();
+		
+		b.v.size = 3;
+		b.c.size = 4;
+		b.i.size = 1;
+		
+		b.v.count = 2;
+		b.c.count = 2;
+		b.i.count = 2;
+		
+		set_line_buffers( b, start, end );
+		//var verts = start.concat( end );
+		//gl.bindBuffer( gl.ARRAY_BUFFER, b.v );
+		//gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
+		
+		gl.bindBuffer( gl.ARRAY_BUFFER, b.c );
+		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( colors ), gl.STATIC_DRAW ); 
+		
+		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, b.i );
+		gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
+		
+		API.glErrorCheck( "main.generate_line_buffers" );
+		return b;
+	}
+	
+	function set_line_buffers( b, p1, p2 ) { 
+		var verts = p1.concat( p2 );
+		gl.bindBuffer( gl.ARRAY_BUFFER, b.v );
+		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
+		API.glErrorCheck( "main.set_line_buffers" );
+	}
+	
 	// =========================================================================
 	
 	app.init = function () {
@@ -58,6 +100,7 @@
 	};
 	
 	app.prepare = function () {
+		score = 0;
 		node_call( root_node, 'prepare' );
 	};
 	
@@ -299,6 +342,8 @@
 		
 		ship.buffs = buffs_gen( verts, colors, indices );
 		
+		ship.vline = generate_line_buffers( 100 );
+		
 		return ship;
 	};
 	
@@ -372,6 +417,9 @@
 			s.buffs.i.count = s.thrust ? 6 : 3;
 			
 			API.entity.draw( s );
+			
+			//set_line_buffers( s.vline, [0,0,0], s.velocity );
+			API.poly.draw_line( s.vline );
 		}
 	};
 	
@@ -381,7 +429,7 @@
 	// Ammo
 	
 	var AMMO_SPEED 		= 300;
-	var AMMO_LIFESPAN 	= 2;
+	var AMMO_LIFESPAN 	= 3;
 	var AMMO_RADIUS 	= 3;
 	
 	// -------------------------------------------------------------------------
@@ -394,7 +442,7 @@
 		this.velocity 	= vec3.create();
 		this.mass		= 1000;
 	}
-	Rocket.prototyp = new API.Node();
+	Rocket.prototype = new API.Node();
 	
 	Rocket.prototype.hit = function ( ent ) {
 	};
@@ -476,7 +524,7 @@
 			for ( j=0; j<belt.length; ++j ) {
 				if ( collide( a, belt[j] ) ) {
 					var w = Math.max( Math.floor( belt[j].worth ), 1 );
-					logger.info( _w.strf( 'astroid hit for {0} points!', w ) );
+					//logger.info( _w.strf( 'astroid hit for {0} points!', w ) );
 					score += w;
 					astroidbelt.remove( belt[ j-- ] );
 					a.active = false;
@@ -677,7 +725,7 @@
 			ent = entities[ i ];
 			pull( this, ent );
 			
-			if ( collide( this, ent ) )
+			if ( collide( this, ent ) ) 
 				ent.hit( this );
 		}
 	};
