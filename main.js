@@ -12,7 +12,7 @@
 	var score 		= 0;
 	
 	var map = { 
-		"width": 1200, "height": 800 
+		"width": 1200, "height": 900 
 	};
 	
 	function node_call ( node, fn ) { 
@@ -46,48 +46,6 @@
 		
 		API.glErrorCheck( "main.buffs_gen" );
 		return b;
-	}
-	
-	function generate_line_buffers ( length ) {
-		var b = {};
-		var start = [ 0,0,0 ];
-		var end = vec3.scale( [0,1,0], length );
-		var indices = [ 0, 1 ];
-		var colors = [ 1,1,1,1
-					 , 1,1,1,1 ];
-		
-		b.v = gl.createBuffer();
-		b.c = gl.createBuffer();
-		b.i = gl.createBuffer();
-		
-		b.v.size = 3;
-		b.c.size = 4;
-		b.i.size = 1;
-		
-		b.v.count = 2;
-		b.c.count = 2;
-		b.i.count = 2;
-		
-		set_line_buffers( b, start, end );
-		//var verts = start.concat( end );
-		//gl.bindBuffer( gl.ARRAY_BUFFER, b.v );
-		//gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
-		
-		gl.bindBuffer( gl.ARRAY_BUFFER, b.c );
-		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( colors ), gl.STATIC_DRAW ); 
-		
-		gl.bindBuffer( gl.ELEMENT_ARRAY_BUFFER, b.i );
-		gl.bufferData( gl.ELEMENT_ARRAY_BUFFER, new Uint16Array( indices ), gl.STATIC_DRAW );
-		
-		API.glErrorCheck( "main.generate_line_buffers" );
-		return b;
-	}
-	
-	function set_line_buffers( b, p1, p2 ) { 
-		var verts = p1.concat( p2 );
-		gl.bindBuffer( gl.ARRAY_BUFFER, b.v );
-		gl.bufferData( gl.ARRAY_BUFFER, new Float32Array( verts ), gl.STATIC_DRAW );
-		API.glErrorCheck( "main.set_line_buffers" );
 	}
 	
 	// =========================================================================
@@ -213,7 +171,7 @@
 		vec3.add( ent.velocity, f );
 	}
 	
-	var G = 6.9e-6;
+	var G = 6.67e-11;
 	
 	/**
 	 * pull the target (trg) towards the source (src)
@@ -239,7 +197,7 @@
 	var MAX_SPEED 			= 240;
 	var MIN_SPEED 			=   0;
 	var MAX_THRUST 			= 180;
-	var DECELERATION_RATE 	=  20;
+	var DECELERATION_RATE 	=   2;
 	var ACCELERATION_RATE 	= MAX_THRUST/2;
 	
 	// -------------------------------------------------------------------------
@@ -254,7 +212,7 @@
 		this.radius = 5;
 		this.thrust = 0;
 		this.sheild = 100;
-		this.mass 	= 500;
+		this.mass 	= 2.6e3;
 	}
 	
 	Ship.prototype = new API.Node();
@@ -341,8 +299,7 @@
 			colors = colors.concat( [ 1.0, 0.0, 0.0, 1.0 ] ); // red 
 		
 		ship.buffs = buffs_gen( verts, colors, indices );
-		
-		ship.vline = generate_line_buffers( 100 );
+		ship.vline = API.line.generate();
 		
 		return ship;
 	};
@@ -361,7 +318,7 @@
 			quat4.multiply( q, mainship.rot, mainship.rot );
 		}
 		
-		var i,l;
+		var i, l, pv;
 		for ( i = 0, l = shipyard.cache.length; i < l; ++i ) {
 			var ship = shipyard.cache[i];
 			move_space( ship, y );
@@ -378,6 +335,10 @@
 					c.active = false;
 				}
 			}
+			
+			// update line representing ships velocity
+			pv = vec3.add( vec3.negate( ship.velocity, [] ), ship.pos );
+			API.line.update( ship.vline, ship.pos, pv );
 		}
 		
 		// handle firing
@@ -396,7 +357,7 @@
 			mainship.firing = true;
 			
 			var dir = quat4.multiplyVec3( ship.rot, [0,1,0] );
-			apply_force( mainship, vec3.scale( dir, -3 ) );
+			apply_force( mainship, vec3.scale( dir, -1 ) );
 		}
 		else
 			mainship.firing = API.keys[ API.K.shift ];
@@ -416,10 +377,8 @@
 			// show the tail if accelerating
 			s.buffs.i.count = s.thrust ? 6 : 3;
 			
+			API.line.draw( s.vline );
 			API.entity.draw( s );
-			
-			//set_line_buffers( s.vline, [0,0,0], s.velocity );
-			API.poly.draw_line( s.vline );
 		}
 	};
 	
@@ -564,11 +523,11 @@
 	// Astroids
 	
 	var ASTROID_SIZE_MIN 	= 20;
-	var ASTROID_SIZE_MAX 	= 40;
+	var ASTROID_SIZE_MAX 	= 50;
 	var ASTROID_LIMIT 		= 30;
-	var ASTROID_DRIFT_SPEED = 60;
+	var ASTROID_DRIFT_SPEED = .3;
 	var ASTROID_WORTH 		= 20;
-	var ASTROID_SPAWN_TIME 	= 1;
+	var ASTROID_SPAWN_TIME 	=  1;
 	
 	// -------------------------------------------------------------------------
 	
@@ -577,11 +536,12 @@
 		this.active 	= true;
 		this.worth 		= ASTROID_WORTH;
 		this.damage 	= 5;
-		this.mass 		= size * 100;
+		this.mass 		= size * 1.e2;
 		
+		var d = vec3.length( pos );
 		vec3.normalize( pos );
-		vec3.cross( pos, [0,0,1]);
-		this.velocity 	= vec3.scale( pos, ASTROID_DRIFT_SPEED );
+		vec3.cross( pos, [0,0,1] );
+		this.velocity 	= vec3.scale( pos, ASTROID_DRIFT_SPEED * d );
 	}
 	Astroid.prototype = new API.Node();
 	
@@ -611,9 +571,9 @@
 		// get random position on the screen, not too close to the edge
 		var w = map.width  - 4*a_size;
 		var h = map.height - 4*a_size;
-		var n = Math.min(h,w);
-		var x = Math.random()*n -n;
-		var y = Math.random()*n -n;
+		var n = Math.min( h, w );
+		var x = Math.random()*n - n;
+		var y = Math.random(x)*n - n;
 		
 		//logger.debug( _w.strf( 'new {2}m astroid @ [ {0}, {1} ]', x, y, a_size) );
 		
@@ -637,6 +597,7 @@
 					  , 0,3,4 ];
 					  
 		a.buffs = buffs_gen( verts, colors, indices );
+		a.vline = API.line.generate();
 		
 		this.cache.push( a );
 	};
@@ -647,30 +608,34 @@
 	};
 	
 	astroidbelt.step = function () {
-		var a, i, j, l;
 		
 		if ( timer.time % ASTROID_SPAWN_TIME < timer.etime )
 			this.add();
 		
+		var a, i, j, l, q, d, pv, angle;
 		l = this.cache.length;
 		for ( i=0; i<l; ++i ) {
 			a = this.cache[i];
 			if ( !a.active ) continue;
 			
 			// pull astroids towards each other
-			//for ( j=0; j<l; ++j  ) { var b = this.cache[j]; if (a != b) pull( a, b ); }
+			for ( j=0; j<l; ++j  ) { var b = this.cache[j]; if (a != b) pull( a, b ); }
 			
 			// reduce value over time
 			a.worth -= timer.etime;
 			
 			// drift...
-			var angle = _w.deg2rad( 1000/a.radius * timer.etime );
-			var q = _w.quat.fromAxis( [0,0,1], angle );
+			angle = _w.deg2rad( 1000/a.radius * timer.etime );
+			q = _w.quat.fromAxis( [0,0,1], angle );
 			quat4.multiply( a.rot, q );
 			
-			var d = vec3.scale( a.velocity, timer.etime, [] );
+			d = vec3.scale( a.velocity, timer.etime, [] );
 			vec3.add( a.pos, d );
-			wrap_edge( a );
+			//wrap_edge( a );
+			
+			// update velocity line
+			pv = vec3.add( vec3.negate( a.velocity, [] ), a.pos );
+			API.line.update( a.vline, a.pos, pv );
 		}
 	};
 	
@@ -678,7 +643,10 @@
 		var a, i, l = this.cache.length;
 		for ( i=0; i<l; ++i ) {
 			a = this.cache[i];
-			if ( a.active ) API.entity.draw( a );
+			if ( a.active ) {
+				//API.line.draw( a.vline );
+				API.entity.draw( a );
+			}
 		}
 	};
 	
@@ -700,7 +668,7 @@
 	
 	gravitywell.init = function(){
 		this.damage = 1.0e4;
-		this.mass 	= 1.0e4;
+		this.mass 	= 1.9e8;
 		
 		var r = this.radius = 5;
 		
@@ -730,8 +698,9 @@
 		}
 	};
 	
-	gravitywell.draw = function () { API.entity.draw( this ); }
-	
+	gravitywell.draw = function () { 
+		API.entity.draw( this ); 
+	};
 	
 	root_node.children.push( gravitywell );
 	
